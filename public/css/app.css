@@ -97,8 +97,6 @@ body{margin:0}
 .synth{display:flex;flex-direction:column;gap:10px;border-left:3px solid var(--lead)}
 .synth>header{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .synth>header .lbl{color:var(--lead);margin-right:auto}
-.synth summary{cursor:pointer;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:4px 0}
-.synth summary:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .sgrps{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:12px;margin-top:8px}
 .sgrp{margin:0;border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .sgrp legend{font-weight:700;letter-spacing:.06em;padding:0 4px}
@@ -107,3 +105,12 @@ body{margin:0}
 .seg .lbl{min-width:4.5em}
 .seg button{background:transparent;border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:.74rem;color:var(--dim)}
 .seg button[aria-pressed="true"]{background:var(--lead);border-color:var(--lead);color:var(--bg)}
+.sviz{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sviz figure{margin:0;display:flex;flex-direction:column;gap:4px;min-width:0}
+.sviz canvas{height:84px}
+.sviz figcaption{font-size:.72rem;color:var(--dim);line-height:1.35}
+.sviz figcaption b{color:var(--ink);font-weight:700;letter-spacing:.04em}
+.seg.mode button{font-size:.78rem;padding:6px 14px}
+#synSimple{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 18px}
+#synSimple .mac small{font-size:.7rem;color:var(--dim);line-height:1.35}
+@media (max-width:560px){.sviz{grid-template-columns:1fr}.sviz canvas{height:72px}}
