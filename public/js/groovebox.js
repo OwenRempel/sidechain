@@ -13,7 +13,7 @@ const TRACKS=[
   {id:'kick',name:'Kick',type:'drum'},{id:'clap',name:'Snare',type:'drum'},
   {id:'hat',name:'Hat',type:'drum'},{id:'ohat',name:'Open',type:'drum'},
   {id:'bass',name:'Bass',type:'mel'},{id:'lead',name:'Lead',type:'mel'},
-  {id:'pad',name:'Chords',type:'drum'}];
+  {id:'pad',name:'Chords',type:'drum'},{id:'wash',name:'Pad',type:'drum'}];
 
 function melody(count,maxLen=3,lo=-2,hi=9){
   const pos=new Set([0]);while(pos.size<count)pos.add(ri(1,15));
@@ -26,46 +26,46 @@ function arp(){
   for(let i=0;i<16;i++){const ix=mode==='up'?i%4:mode==='ping'?[0,1,2,3,2,1][i%6]:[0,2,1,3][i%4];out[i]=note(tones[ix],1,i%4?.7:1)}
   return out;
 }
-const base=()=>({kick:D16(),clap:D16(),hat:D16(),ohat:D16(),bass:M16(),lead:M16(),pad:D16()});
+const base=()=>({kick:D16(),clap:D16(),hat:D16(),ohat:D16(),bass:M16(),lead:M16(),pad:D16(),wash:at(D16(),[0])});
 
 const STYLES={
-  house:{lead:'pluck',bass:'housebass',chords:'housestab',label:'House',bpm:124,scales:['minor','dorian'],progs:[[0,5,2,6],[0,3,0,4],[0,6,5,6],[3,4,0,0]],swing:.3,wobble:0,space:.3,echo:.2,
+  house:{lead:'pluck',bass:'housebass',chords:'housestab',pads:'warmpad',label:'House',bpm:124,scales:['minor','dorian'],progs:[[0,5,2,6],[0,3,0,4],[0,6,5,6],[3,4,0,0]],swing:.3,wobble:0,space:.3,echo:.2,
     sound:{kickDecay:.45,kickEnd:50,bassWave:'sawtooth',bassDetune:6,bassCut:220,bassEnv:1400,bassDecay:.08,bassQ:6,padCut:1600},
     gen(){const p=base();at(p.kick,[0,4,8,12]);at(p.clap,[4,12]);at(p.ohat,[2,6,10,14],.8);
       for(let i=0;i<16;i++)if(chance(.55))p.hat[i]=i%2?.5:.3; if(chance(.4))p.clap[15]=.5;
       pick([[2,6,10,14],[2,3,6,10,11,14],[0,3,6,9,12,14],[2,5,8,10,13]]).forEach(i=>p.bass[i]=note(pick([0,0,0,7,4]),1,i%4===2?1:.8));
       euclid(ri(3,5),16,ri(0,2)).forEach(i=>p.lead[i]=note(pick(CT),1,chance(.5)?1:.7));
       if(chance(.5))p.pad[0]=1;else at(p.pad,pick([[3,10],[2,6,10,14],[0,6,12]]));return p}},
-  techno:{lead:'acid',bass:'technobass',chords:'technostab',label:'Techno',bpm:130,scales:['phrygian','minor'],progs:[[0,0,0,0],[0,0,5,0],[0,1,0,1]],swing:.08,wobble:0,space:.25,echo:.35,
+  techno:{lead:'acid',bass:'technobass',chords:'technostab',pads:'darkdrone',label:'Techno',bpm:130,scales:['phrygian','minor'],progs:[[0,0,0,0],[0,0,5,0],[0,1,0,1]],swing:.08,wobble:0,space:.25,echo:.35,
     sound:{kickDecay:.55,kickEnd:42,bassWave:'sawtooth',bassDetune:4,bassCut:160,bassEnv:900,bassDecay:.05,bassQ:10,padCut:900},
     gen(){const p=base();at(p.kick,[0,4,8,12]);if(chance(.6))at(p.clap,[4,12]);at(p.ohat,[2,6,10,14],.6);
       for(let i=0;i<16;i++)p.hat[i]=i%4===2?.8:i%2?.5:.3;
       for(let i=0;i<16;i++)if(i%4&&chance(.85))p.bass[i]=note(0,1,i%4===2?1:.7);
       euclid(ri(3,5),16,ri(0,3)).forEach(i=>p.lead[i]=note(pick([0,0,2,7]),1,.9));
       if(chance(.5))at(p.pad,euclid(3,16,ri(0,2)));return p}},
-  trance:{lead:'supersaw',bass:'trancebass',chords:'trancepad',label:'Trance',bpm:138,scales:['minor'],progs:[[0,5,2,6],[5,6,0,0],[0,5,3,4]],swing:0,wobble:0,space:.45,echo:.35,
+  trance:{lead:'supersaw',bass:'trancebass',chords:'trancepad',pads:'sweeppad',label:'Trance',bpm:138,scales:['minor'],progs:[[0,5,2,6],[5,6,0,0],[0,5,3,4]],swing:0,wobble:0,space:.45,echo:.35,
     sound:{kickDecay:.4,kickEnd:50,bassWave:'sawtooth',bassDetune:8,bassCut:260,bassEnv:1200,bassDecay:.07,bassQ:4,padCut:2200},
     gen(){const p=base();at(p.kick,[0,4,8,12]);at(p.clap,[4,12]);at(p.ohat,[2,6,10,14],.8);
       for(let i=0;i<16;i++)if(i%2&&chance(.5))p.hat[i]=.3;
       for(let i=0;i<16;i++)if(i%4)p.bass[i]=note(0,1,i%4===2?1:.75);
       p.lead=arp();p.pad[0]=1;return p}},
-  synthwave:{lead:'brass',bass:'synthwavebass',chords:'synthwavepad',label:'Synthwave',bpm:100,scales:['minor'],progs:[[0,5,2,6],[0,6,5,6],[5,6,0,0]],swing:0,wobble:0,space:.45,echo:.4,
+  synthwave:{lead:'brass',bass:'synthwavebass',chords:'synthwavepad',pads:'warmpad',label:'Synthwave',bpm:100,scales:['minor'],progs:[[0,5,2,6],[0,6,5,6],[5,6,0,0]],swing:0,wobble:0,space:.45,echo:.4,
     sound:{kickDecay:.5,kickEnd:48,bassWave:'sawtooth',bassDetune:10,bassCut:300,bassEnv:1000,bassDecay:.15,bassQ:3,padCut:1800},
     gen(){const p=base();at(p.kick,chance(.5)?[0,8,10]:[0,8]);at(p.clap,[4,12]);for(let i=0;i<16;i+=2)p.hat[i]=i%4?.6:.4;if(chance(.5))p.ohat[14]=.7;
       for(let i=0;i<16;i+=2)p.bass[i]=note(i%4?7:0,1,.9);p.lead=melody(ri(5,7));p.pad[0]=1;return p}},
-  dubstep:{lead:'squarelead',bass:'wobblebass',chords:'darkpad',label:'Dubstep',bpm:140,scales:['phrygian','minor'],progs:[[0,0,5,6],[0,0,0,0],[0,5,0,6]],swing:0,wobble:.65,space:.3,echo:.25,
+  dubstep:{lead:'squarelead',bass:'wobblebass',chords:'darkpad',pads:'darkdrone',label:'Dubstep',bpm:140,scales:['phrygian','minor'],progs:[[0,0,5,6],[0,0,0,0],[0,5,0,6]],swing:0,wobble:.65,space:.3,echo:.25,
     sound:{kickDecay:.5,kickEnd:45,bassWave:'sawtooth',bassDetune:14,bassCut:200,bassEnv:400,bassDecay:.2,bassQ:12,padCut:1500},
     gen(){const p=base();at(p.kick,[0]);if(chance(.6))p.kick[pick([10,11,3])]=.9;p.clap[8]=1;for(let i=0;i<16;i+=2)if(chance(.7))p.hat[i]=.4;if(chance(.4))p.ohat[6]=.6;
       pick([[[0,6],[6,2],[8,6],[14,2]],[[0,8],[8,4],[12,4]],[[0,3],[3,3],[6,2],[8,8]],[[0,4],[4,4],[8,4],[12,4]]])
         .forEach(([s,l])=>p.bass[s]=note(pick([0,0,1,-2,4]),l,1,pick([1,2,3,4,6])));
       p.lead=melody(ri(2,4),4,0,7);p.pad[0]=1;return p}},
-  dnb:{lead:'flute',bass:'reesebass',chords:'dnbpad',label:'Drum & Bass',bpm:172,scales:['minor','dorian'],progs:[[0,0,5,6],[0,5,3,4],[0,0,6,6]],swing:0,wobble:0,space:.35,echo:.3,
+  dnb:{lead:'flute',bass:'reesebass',chords:'dnbpad',pads:'airpad',label:'Drum & Bass',bpm:172,scales:['minor','dorian'],progs:[[0,0,5,6],[0,5,3,4],[0,0,6,6]],swing:0,wobble:0,space:.35,echo:.3,
     sound:{kickDecay:.35,kickEnd:55,bassWave:'sawtooth',bassDetune:22,bassCut:380,bassEnv:300,bassDecay:.3,bassQ:5,padCut:2000},
     gen(){const p=base();at(p.kick,chance(.5)?[0,10]:[0,7,10]);at(p.clap,[4,12]);if(chance(.5))p.clap[pick([7,9,15])]=.4;
       for(let i=0;i<16;i++)p.hat[i]=i%2?(chance(.4)?.3:0):.6;if(chance(.5))p.ohat[14]=.7;
       pick([[[0,6],[6,4],[10,6]],[[0,10],[10,6]],[[0,4],[6,4],[10,4],[14,2]]]).forEach(([s,l])=>p.bass[s]=note(pick([0,0,5,-2]),l,1));
       p.lead=melody(ri(3,5),4,0,9);p.pad[0]=1;return p}},
-  futurebass:{lead:'chime',bass:'fbbass',chords:'fbchords',label:'Future Bass',bpm:128,scales:['major'],progs:[[3,4,5,0],[0,4,5,3],[5,3,0,4],[3,4,2,5]],swing:.12,wobble:0,space:.5,echo:.35,
+  futurebass:{lead:'chime',bass:'fbbass',chords:'fbchords',pads:'shimmer',label:'Future Bass',bpm:128,scales:['major'],progs:[[3,4,5,0],[0,4,5,3],[5,3,0,4],[3,4,2,5]],swing:.12,wobble:0,space:.5,echo:.35,
     // Mello x TFR: half-time drums, pumping supersaw chord stabs, FM "chime" lead with a pitch blip
     sound:{kickDecay:.45,kickEnd:50,bassWave:'sawtooth',bassDetune:10,bassCut:320,bassEnv:700,bassDecay:.2,bassQ:3,padCut:3200},
     gen(){const p=base();at(p.kick,pick([[0,10],[0,3,10],[0,7,10]]));p.clap[8]=1;if(chance(.4))p.clap[15]=.4;
@@ -78,7 +78,7 @@ let S;
 const defaultSections=()=>Theory.ARRANGEMENT.map(s=>({...s,tracks:[...s.tracks]}));
 const presetSynth=id=>Synth.normalize((Synth.byId(id)||Synth.PRESETS[0]).p);
 // The style's starting sound for each synth part (lead, bass, chords).
-const styleSound=(st,part)=>st[{lead:'lead',bass:'bass',pad:'chords'}[part]];
+const styleSound=(st,part)=>st[{lead:'lead',bass:'bass',pad:'chords',wash:'pads'}[part]];
 function partSounds(st,keep){
   const o={};Synth.PARTS.forEach(({id,keys:[k,kid]})=>{if(keep&&S?.[k]){o[k]=S[k];o[kid]=S[kid]}else{o[kid]=styleSound(st,id);o[k]=presetSynth(o[kid])}});return o;
 }
@@ -86,11 +86,21 @@ function partSounds(st,keep){
 function fresh(style,key,keepSynth){
   const st=STYLES[style],synth=partSounds(st,keepSynth);
   return {style,key:key??pick([0,2,5,7,9,4]),scale:pick(st.scales),prog:pick(st.progs).slice(),bpm:st.bpm,swing:st.swing,cutoff:1,wobble:st.wobble,
-    space:st.space,echo:st.echo,vol:.8,arrange:S?.arrange||false,sections:S?.sections||defaultSections(),sound:{...st.sound},...synth,pat:st.gen(),mute:S?.mute||{}};
+    space:st.space,echo:st.echo,vol:.8,vary:S?.vary??.5,arrange:S?.arrange||false,sections:S?.sections||defaultSections(),sound:{...st.sound},...synth,mute:S?.mute||{},
+    // patterns A-D: A for the intro and build, B (a second take of the style) for the drop; C and D start empty
+    ...(()=>{const pats=[st.gen(),st.gen(),null,null];return{pats,edit:0,pat:pats[0]}})()};
 }
 try{const s=JSON.parse(localStorage.getItem('sidechain-v1'));if(s&&s.pat&&STYLES[s.style])S=s}catch(e){}
 if(!S)S=fresh('futurebass',0);
 if(!S.sections)S.sections=defaultSections();
+// songs saved before the Pad track and drum variation
+// songs saved before patterns A-D: their one pattern becomes A. S.pat is always the pattern being edited (S.pats[S.edit]).
+if(!Array.isArray(S.pats)){S.pats=[S.pat,null,null,null];S.edit=0}
+S.edit=Math.max(0,Math.min(3,S.edit|0));S.pats[S.edit]=S.pat;
+S.sections.forEach(x=>{if(x.pat==null)x.pat=0});
+S.pats.forEach(p=>{if(p&&!p.wash)p.wash=at(D16(),[0])});
+if(!S.pat.wash){S.pat.wash=at(D16(),[0]);S.sections.forEach(x=>{if(x.tracks.includes('pad')&&!x.tracks.includes('wash'))x.tracks.push('wash')})}
+if(S.vary==null)S.vary=.5;
 Synth.PARTS.forEach(({id,keys:[k,kid]})=>{if(!S[k]){S[kid]=styleSound(STYLES[S.style],id);S[k]=presetSynth(S[kid])}else S[k]=Synth.normalize(S[k])});
 try{const h=JSON.parse(localStorage.getItem('sidechain-handoff'));if(h){Object.assign(S,h);localStorage.removeItem('sidechain-handoff')}}catch(e){}
 function save(){try{localStorage.setItem('sidechain-v1',JSON.stringify(S))}catch(e){}}
@@ -105,7 +115,7 @@ function chordName(r){const rs=semis(r),t=semis(r+2)-rs,f=semis(r+4)-rs;return N
 function roman(r){const rs=semis(r),t=semis(r+2)-rs,f=semis(r+4)-rs,n=['I','II','III','IV','V','VI','VII'][((r%7)+7)%7];return t===3?n.toLowerCase()+(f===6?'°':''):n}
 
 /* ---------- audio engine ---------- */
-let leadAn,bassOut,partAn={},ctx,masterGain,masterFilter,duck,drumBus,musicBus,leadOut,padOut,revIn,delIn,delay,analyser,noiseBuf,ohatG=null;
+let leadAn,bassOut,washOut,partAn={},ctx,masterGain,masterFilter,duck,drumBus,musicBus,leadOut,padOut,revIn,delIn,delay,analyser,noiseBuf,ohatG=null;
 function initAudio(){
   ctx=new (window.AudioContext||window.webkitAudioContext)();
   masterGain=ctx.createGain();masterGain.gain.value=S.vol;
@@ -126,9 +136,10 @@ function initAudio(){
   delIn.connect(delay);delay.connect(dlp);dlp.connect(fb).connect(delay);dlp.connect(duck);
   leadOut=ctx.createGain();leadOut.connect(musicBus);leadOut.connect(delIn);leadOut.connect(revIn);
   bassOut=ctx.createGain();bassOut.gain.value=2;bassOut.connect(musicBus);
+  washOut=ctx.createGain();washOut.gain.value=.5;washOut.connect(musicBus);washOut.connect(revIn);
   padOut=ctx.createGain();padOut.gain.value=.7;padOut.connect(musicBus);padOut.connect(revIn);
   // analysers feed the synth panel's live wave
-  [['lead',leadOut],['bass',bassOut],['pad',padOut]].forEach(([id,n])=>{const a=ctx.createAnalyser();a.fftSize=2048;n.connect(a);partAn[id]=a});leadAn=partAn.lead;
+  [['lead',leadOut],['bass',bassOut],['pad',padOut],['wash',washOut]].forEach(([id,n])=>{const a=ctx.createAnalyser();a.fftSize=2048;n.connect(a);partAn[id]=a});leadAn=partAn.lead;
   loadSamples();
   noiseBuf=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate);const nd=noiseBuf.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=R()*2-1;
 }
@@ -162,7 +173,7 @@ function hat(t,v,open){
 }
 // Bass, lead and chords all play through leadvoice.js, each with its own sound (S.bassSynth, S.synth, S.padSynth).
 // Mono mode: a note that starts as the last one ends (or overlaps it) glides on from it instead of restarting.
-const lastHz={lead:440,bass:110,pad:262},monoV={};
+const lastHz={lead:440,bass:110,pad:262,wash:131},monoV={};
 function voice(part,dest,p,t,f,dur,v){
   lastHz[part]=f;const m=monoV[part];
   if(p.mono==='mono'&&m&&m.src===p.src&&m.end>t-.06&&m.start<t){m.v.glide(f,t,p.glide);m.v.release(t+dur);m.end=t+dur;return}
@@ -176,6 +187,9 @@ function bass(t,f,dur,v,w){
 }
 function lead(t,f,dur,v){voice('lead',leadOut,{...S.synth,src:S.synth},t,f,dur,v)}
 function pad(t,freqs,dur){const p=S.padSynth,k=Math.pow(2,p.oct);lastHz.pad=freqs[0]*k;freqs.forEach(f=>startLead(ctx,padOut,p,t,f*k,1).release(t+dur))}
+// Pad: an open chord under everything (root and 5th low, then root and 3rd an octave up), so it fills space without crowding the chords.
+const washFreqs=r=>[0,4,7,9].map(k=>mtof(bassBase()+12+12*S.washSynth.oct+semis(r+k)));
+function wash(t,freqs,dur){lastHz.wash=freqs[0];freqs.forEach(f=>startLead(ctx,washOut,S.washSynth,t,f,.8).release(t+dur))}
 const chordFreqs=r=>[0,2,4].map(k=>mtof(bassBase()+24+semis(r+k)));
 
 /* ---------- arrangement + scheduler ---------- */
@@ -189,17 +203,20 @@ function cutoffAt(bar,st){const c=cutHz(),s=S.arrange&&section(bar);if(!s)return
 
 let playing=false,step=0,bar=0,nextT=0,timer=null;const q=[];
 function scheduleStep(st,t,bar){
-  const P=S.pat,sec=S.arrange?section(bar):null,on=id=>!S.mute[id]&&(!sec||sec.set.has(id));
+  const sec=S.arrange?section(bar):null,P=(sec&&S.pats[sec.pat])||S.pat,on=id=>!S.mute[id]&&(!sec||sec.set.has(id));
   const sd=60/S.bpm/4,r=S.prog[bar%S.prog.length];
   masterFilter.frequency.setTargetAtTime(cutoffAt(bar,st),t,.03);
-  if(on('kick')&&P.kick[st]&&!(sec?.roll&&st>=8))kick(t,P.kick[st]);
+  // Variation: fills on the last bar of each 4-bar phrase (or of each section), a crash after, ghost notes in between
+  const D=Theory.varyDrums(P,st,bar,sec?.roll?0:S.vary,sec?{fill:sec.b===sec.bars-1&&sec.bars>1,after:sec.b===0&&bar>0}:undefined);
+  if(on('kick')&&D.kick&&!(sec?.roll&&st>=8))kick(t,D.kick);
   if(sec?.roll&&!S.mute.clap){if(st>=8||st%2===0)clap(t,.35+st/24)}
-  else if(on('clap')&&P.clap[st])clap(t,P.clap[st]);
-  if(on('ohat')&&P.ohat[st])hat(t,P.ohat[st],true);else if(on('hat')&&P.hat[st])hat(t,P.hat[st],false);
+  else if(on('clap')&&D.clap)clap(t,D.clap);
+  if(on('ohat')&&D.ohat)hat(t,D.ohat,true);else if(on('hat')&&D.hat)hat(t,D.hat,false);
   const b=P.bass[st];if(b&&on('bass'))bass(t,mtof(bassNote(r+b.d)),b.len*sd*.92,b.v,b.w);
   const l=P.lead[st];if(l&&on('lead'))lead(t,mtof(leadNote(r+l.d)),l.len*sd*.9,l.v);
   if(P.pad[st]&&on('pad')){let nx=st+1;while(nx<16&&!P.pad[nx])nx++;pad(t,chordFreqs(r),(nx-st)*sd*.97)}
-  q.push({st,bar,t,sec:sec?.name});
+  if(P.wash[st]&&on('wash')){let nx=st+1;while(nx<16&&!P.wash[nx])nx++;wash(t,washFreqs(r),(nx-st)*sd)}
+  q.push({st,bar,t,sec:sec?`${sec.name} · ${'ABCD'[S.pats[sec.pat]?sec.pat:S.edit]}`:null});
 }
 function tick(){
   while(nextT<ctx.currentTime+.12){
@@ -281,7 +298,11 @@ function editNote(a,val){
 /* arrangement panel: bars per section and which tracks play in each */
 function renderArr(){
   $('#arrRows').innerHTML=S.sections.map((s,k)=>`<div class="sec" data-k="${k}">
-    <div class="field"><span class="sec-n">${s.name}</span><select data-k="${k}" aria-label="${s.name} length">${[0,1,2,4,8,16].map(b=>`<option value="${b}"${b===s.bars?' selected':''}>${b} bar${b===1?'':'s'}</option>`).join('')}</select></div>
+    <div class="field"><span class="sec-n">${k+1}. ${s.name}</span>
+      <select data-k="${k}" data-f="pat" aria-label="${s.name} pattern">${[0,1,2,3].map(i=>`<option value="${i}"${i===s.pat?' selected':''}>Pattern ${'ABCD'[i]}${S.pats[i]?'':' (empty)'}</option>`).join('')}</select>
+      <select data-k="${k}" data-f="bars" aria-label="${s.name} length">${[0,1,2,4,8,12,16,24,32].map(b=>`<option value="${b}"${b===s.bars?' selected':''}>× ${b} bar${b===1?'':'s'}</option>`).join('')}</select>
+      <button class="pm" data-k="${k}" data-mv="-1" aria-label="Move ${s.name} earlier"${k?'':' disabled'}>↑</button>
+      <button class="pm" data-k="${k}" data-del aria-label="Remove ${s.name}">×</button></div>
     <div class="sec-t">${TRACKS.map(t=>`<button class="tchip" style="--c:var(--${t.id})" data-k="${k}" data-t="${t.id}" aria-pressed="${s.tracks.includes(t.id)}">${t.name}</button>`).join('')}</div></div>`).join('');
 }
 
@@ -294,6 +315,7 @@ const MAC=[
   {k:'cutoff',label:'Filter',min:0,max:1,step:.005,fmt:()=>{const h=cutHz();return h>=1000?(h/1000).toFixed(1)+' kHz':Math.round(h)+' Hz'}},
   {k:'wobble',label:'Wobble',min:0,max:1,step:.01,fmt:v=>Math.round(v*100)+'%'},
   {k:'space',label:'Reverb',min:0,max:1,step:.01,fmt:v=>Math.round(v*100)+'%'},
+  {k:'vary',label:'Drum variation',min:0,max:1,step:.01,fmt:v=>v<.02?'off':Math.round(v*100)+'%'},
   {k:'echo',label:'Delay',min:0,max:.8,step:.01,fmt:v=>Math.round(v/.8*100)+'%'},
   {k:'vol',label:'Volume',min:0,max:1,step:.01,fmt:v=>Math.round(v*100)+'%'}];
 function buildMacros(){
@@ -317,13 +339,14 @@ function ensureAudio(){if(!ctx)initAudio();ctx.resume();return ctx.currentTime+.
 const PART_KEY='sidechain-synth-part';
 let synPart='lead';try{synPart=Synth.part(localStorage.getItem(PART_KEY)).id}catch(e){}
 function audition(){if(playing)return;const t=ensureAudio(),r=S.prog[0];
-  if(synPart==='bass')bass(t,mtof(bassNote(r)),.4,1,2);else if(synPart==='pad')pad(t,chordFreqs(r),.6);else lead(t,mtof(leadNote(r)),.32,1)}
+  if(synPart==='bass')bass(t,mtof(bassNote(r)),.4,1,2);else if(synPart==='wash')wash(t,washFreqs(r),1.2);else if(synPart==='pad')pad(t,chordFreqs(r),.6);else lead(t,mtof(leadNote(r)),.32,1)}
 // Try: a short phrase over the first chords, so you hear the sound in context.
 function tryPhrase(){if(playing)return;const t=ensureAudio(),r=S.prog[0],sd=60/S.bpm/4;
   if(synPart==='bass'){S.prog.forEach((c,b)=>[[0,0,3],[3,7,1],[6,0,2],[10,0,2],[12,4,3]].forEach(([st,d,len])=>bass(t+(b*16+st)*sd*.5,mtof(bassNote(c+d)),len*sd*.5,1,2)));return}
   if(synPart==='pad'){S.prog.forEach((c,b)=>pad(t+b*sd*8,chordFreqs(c),sd*7.5));return}
+  if(synPart==='wash'){S.prog.forEach((c,b)=>wash(t+b*sd*16,washFreqs(c),sd*16));return}
   pad(t,chordFreqs(r),sd*14);[[0,0,2],[2,2,1],[4,3,1],[7,4,2],[4,6,2],[2,8,1],[0,9,5]].forEach(([d,st,len])=>lead(t+st*sd*1.5,mtof(leadNote(r+d)),len*sd*1.4,st?.85:1))}
-const partHz=()=>{const r=S.prog[0];return synPart==='bass'?mtof(bassNote(r)):synPart==='pad'?chordFreqs(r)[0]*Math.pow(2,S.padSynth.oct):mtof(leadNote(r))};
+const partHz=()=>{const r=S.prog[0];return synPart==='wash'?washFreqs(r)[0]:synPart==='bass'?mtof(bassNote(r)):synPart==='pad'?chordFreqs(r)[0]*Math.pow(2,S.padSynth.oct):mtof(leadNote(r))};
 const synthPanel=createSynthPanel($('#synth'),{model:()=>Synth.partView(S,synPart),persist:()=>{save();loadSamples()},audition,tryPhrase,noteHz:partHz,
   analyser:()=>partAn[synPart]||null,lastHz:()=>lastHz[synPart],sampleRate:()=>ctx?ctx.sampleRate:44100,
   part:()=>synPart,setPart:id=>{synPart=Synth.part(id).id;try{localStorage.setItem(PART_KEY,synPart)}catch(e){}}});
@@ -338,13 +361,13 @@ window.addEventListener('storage',e=>{
     ['lead','bass'].forEach(id=>{if(n.pat&&n.pat[id]&&JSON.stringify(n.pat[id])!==JSON.stringify(S.pat[id])){S.pat[id]=n.pat[id];sel=null;renderTrack(id);renderEditor()}})}catch(err){}
 });
 
-function renderEverything(){renderAll();renderProg();renderEditor();renderArr();renderSynth();syncMacros();syncTop();applyAudio();save()}
+function renderEverything(){renderPats();renderAll();renderProg();renderEditor();renderArr();renderSynth();syncMacros();syncTop();applyAudio();save()}
 
 $('#key').innerHTML=NOTE.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
 $('#scale').innerHTML=Object.keys(SCALES).map(s=>`<option>${s}</option>`).join('');
 buildStyles();buildGrid();buildMacros();renderEverything();
 
-$('#midi').onclick=()=>exportMidi(S,{semis,bassBase,leadOct:12*S.synth.oct,bassOct:12*S.bassSynth.oct,padOct:12*S.padSynth.oct});
+$('#midi').onclick=()=>exportMidi(S,{semis,bassBase,leadOct:12*S.synth.oct,bassOct:12*S.bassSynth.oct,padOct:12*S.padSynth.oct,washOct:12*S.washSynth.oct});
 $('#play').onclick=()=>playing?stop():start();
 $('#gen').onclick=()=>{S=fresh(S.style,S.key,true);sel=null;renderEverything()};
 $('#arrange').onclick=()=>{S.arrange=!S.arrange;if(playing){bar=0}renderEverything()};
@@ -355,9 +378,23 @@ $('#prog').onclick=e=>{const b=e.target.closest('.pm');if(!b)return;
   if(+b.dataset.n>0)S.prog.push(S.prog[S.prog.length-1]);else S.prog.pop();renderProg();save()};
 $('#noteEd').onclick=e=>{const b=e.target.closest('button[data-a]');if(b&&sel)editNote(b.dataset.a,+b.dataset.n||0)};
 $('#noteEd').onchange=e=>{if(e.target.dataset.a==='w'&&sel)editNote('w',+e.target.value)};
-$('#arrRows').onchange=e=>{const k=e.target.dataset.k;if(k==null)return;S.sections[k].bars=+e.target.value;if(playing)bar=0;syncTop();save()};
-$('#arrRows').onclick=e=>{const b=e.target.closest('.tchip');if(!b)return;const s=S.sections[b.dataset.k],t=b.dataset.t;
+$('#arrRows').onchange=e=>{const k=e.target.dataset.k,f=e.target.dataset.f;if(k==null||!f)return;S.sections[k][f]=+e.target.value;
+  if(f==='pat'&&!S.pats[S.sections[k].pat]){S.pats[S.sections[k].pat]=JSON.parse(JSON.stringify(S.pat));renderPats();renderArr()}
+  if(playing)bar=0;syncTop();save()};
+$('#arrRows').onclick=e=>{
+  const x=e.target.closest('[data-del],[data-mv]');
+  if(x){const k=+x.dataset.k;if(x.dataset.del!==undefined)S.sections.splice(k,1);else if(k>0)[S.sections[k-1],S.sections[k]]=[S.sections[k],S.sections[k-1]];
+    renderArr();if(playing)bar=0;syncTop();save();return}
+  const b=e.target.closest('.tchip');if(!b)return;const s=S.sections[b.dataset.k],t=b.dataset.t;
   s.tracks=s.tracks.includes(t)?s.tracks.filter(x=>x!==t):[...s.tracks,t];b.setAttribute('aria-pressed',s.tracks.includes(t));save()};
+$('#arrAdd').innerHTML='<option value="">+ Add section…</option>'+Theory.SECTION_TYPES.map(t=>`<option>${t.name}</option>`).join('');
+$('#arrAdd').onchange=e=>{const t=Theory.SECTION_TYPES.find(x=>x.name===e.target.value);e.target.value='';if(!t)return;
+  S.sections.push({name:t.name,bars:4,pat:t.name==='Drop'&&S.pats[1]?1:S.edit,tracks:[...t.tracks],...(t.dark?{dark:true}:{}),...(t.build?{build:true}:{})});renderArr();syncTop();save()};
+/* patterns A-D: the grid edits one; the arrangement picks one per section */
+function renderPats(){$('#pats').innerHTML='<span class="lbl">Pattern</span>'+[0,1,2,3].map(i=>`<button data-p="${i}" aria-pressed="${i===S.edit}"${S.pats[i]?'':' class="empty"'}>${'ABCD'[i]}</button>`).join('')+
+  `<small>${S.arrange?'Arrange plays each section\'s pattern. ':'Loop plays the pattern you are editing. '}An empty one starts as a copy of the one you are on.</small>`}
+$('#pats').onclick=e=>{const b=e.target.closest('[data-p]');if(!b)return;const i=+b.dataset.p;
+  if(!S.pats[i])S.pats[i]=JSON.parse(JSON.stringify(S.pat));S.edit=i;S.pat=S.pats[i];sel=null;renderPats();renderAll();renderEditor();renderArr();save()};
 $('#arrReset').onclick=()=>{S.sections=defaultSections();renderArr();syncTop();save()};
 $('#key').onchange=e=>{S.key=+e.target.value;renderProg();renderEditor();save()};
 $('#scale').onchange=e=>{S.scale=e.target.value;renderProg();renderEditor();save()};
@@ -366,7 +403,7 @@ document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|SELECT|BUTT
 
 function preview(id,i){
   if(!ctx||playing)return;ctx.resume();const t=ctx.currentTime+.01,r=S.prog[0],sd=60/S.bpm/4,P=S.pat;
-  ({kick:()=>kick(t,1),clap:()=>clap(t,1),hat:()=>hat(t,.7,false),ohat:()=>hat(t,.7,true),pad:()=>pad(t,chordFreqs(r),.4),
+  ({kick:()=>kick(t,1),clap:()=>clap(t,1),hat:()=>hat(t,.7,false),ohat:()=>hat(t,.7,true),pad:()=>pad(t,chordFreqs(r),.4),wash:()=>wash(t,washFreqs(r),.8),
     bass:()=>bass(t,mtof(bassNote(r+P.bass[i].d)),sd*P.bass[i].len,1,P.bass[i].w),lead:()=>lead(t,mtof(leadNote(r+P.lead[i].d)),sd*P.lead[i].len,1)})[id]();
 }
 $('#grid').onclick=e=>{
@@ -375,7 +412,7 @@ $('#grid').onclick=e=>{
   if(dice){const id=dice.dataset.t;S.pat[id]=STYLES[S.style].gen()[id];renderTrack(id);renderEditor();save();return}
   if(!cell)return;
   const id=cell.parentElement.dataset.t,i=+cell.dataset.i,a=S.pat[id],tr=TRACKS.find(t=>t.id===id);
-  if(tr.type==='drum'){a[i]=id==='pad'?(a[i]?0:1):(a[i]===0?1:a[i]>=.75?.5:0)}
+  if(tr.type==='drum'){a[i]=id==='pad'||id==='wash'?(a[i]?0:1):(a[i]===0?1:a[i]>=.75?.5:0)}
   else{const prev=sel;
     // tap an empty step to add a note (at the last pitch you chose), tap a note to edit it, tap it again to delete
     if(a[i]&&prev&&prev.id===id&&prev.i===i){a[i]=null;sel=null}

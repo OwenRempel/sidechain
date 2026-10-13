@@ -43,9 +43,11 @@ Plain ES scripts, no build step. Keep it that way until a feature needs a bundle
 
 - `key`: tonic pitch class 0-11. `scale`: `major | minor | dorian | phrygian`.
 - `prog`: array of **scale-degree indices** (0 = home), one chord per bar. Chord = degrees r, r+2, r+4.
-- `pat`: 16-step patterns. Drums are numbers (0 off, 0.5 soft, 1 full). `bass`/`lead` are `{d, len, v, w?}`, with `d` a scale degree relative to the current chord root and `w` the wobble rate multiplier.
+- `pats`: patterns A-D (array of 4, null = empty); `edit` = the one the grid shows, and `pat` is always `pats[edit]` (the same object in memory; on load `pats[edit]` is reset to `pat`, which wins). Each of `sections` has `name`, `bars`, `pat` (0-3), `tracks`, and `dark`/`build` flags (types in `Theory.SECTION_TYPES`). Arrange plays sections top to bottom; loop plays `pat`.
+- `vary` (0-1): drum variation, applied at play time by `Theory.varyDrums` (fills every 4 bars or at the end of a section).
+- `pat`: 16-step patterns. Drums, `pad` (chords) and `wash` (the Pad track) are numbers (0 off, 0.5 soft, 1 full). `bass`/`lead` are `{d, len, v, w?}`, with `d` a scale degree relative to the current chord root and `w` the wobble rate multiplier.
 - The Lab hands a progression to the Groovebox via `localStorage['sidechain-handoff'] = {key, scale, prog}`.
-- Groovebox state persists in `localStorage['sidechain-v1']`. `S.synth`, `S.bassSynth`, `S.padSynth` hold the lead, bass and chord sounds (keys in `Synth.PARAMS`); `S.synthId` / `S.bassSynthId` / `S.padSynthId` the preset each came from (`u:<name>` for a saved one). `Synth.PARTS` maps part -> keys. Saved sounds live in `localStorage['sidechain-presets']`. A sound with `wave: 'sample'` plays `sample` (an IndexedDB id) pitched from `sroot`. `S.sound` now only drives the kick.
+- Groovebox state persists in `localStorage['sidechain-v1']`. `S.synth`, `S.bassSynth`, `S.padSynth`, `S.washSynth` hold the lead, bass, chord and pad sounds (keys in `Synth.PARAMS`); `S.synthId` / `S.bassSynthId` / `S.padSynthId` the preset each came from (`u:<name>` for a saved one). `Synth.PARTS` maps part -> keys. Saved sounds live in `localStorage['sidechain-presets']`. A sound with `wave: 'sample'` plays `sample` (an IndexedDB id) pitched from `sroot`. `S.sound` now only drives the kick.
 - Other keys: `sidechain-synth-part` (which part the panel edits), `sidechain-arp`, `sidechain-kb-oct[-bass|-pad]`, `sidechain-samples` (bumped when the sample list changes).
 
 ## Status
@@ -61,7 +63,7 @@ Done (v0.1, untested in a real browser session, so verify audio first):
 1. **Engine refactor:** move instruments out of groovebox.js into `engine.js` as `createEngine(ctx)` so it works with an `OfflineAudioContext`. Unlocks:
 2. **WAV export:** render N bars offline (and stems per track).
 3. **Synth layer (M1):** done. One voice (leadvoice.js) for lead, bass and chords: osc + unison or a loaded sample, layer osc, sub, air, FM bell, filter + env + drive, ADSR, LFO, chorus, stereo width, mono + glide, velocity. Simple view (Brightness, Thickness, Pluck ↔ Swell, Movement, Octave) and All controls, pictures of the wave (live), overtones vs. filter, and volume/brightness over time. Keep envAt() in synth.js in step with leadvoice.js when changing the voice. 48 presets in 7 categories, each style starts with its own lead, bass and chord sound; the Wobble knob drives the bass filter LFO. Pop-out Synth page with keyboard, arpeggiator and Record. Next ideas: per-part effects sends, sample start/trim, more chord voicings.
-4. **Multi-bar patterns (M2):** 4-8 bar patterns, A/B/C/D bank, piano-roll-lite for lead/chords.
+4. **Multi-bar patterns (M2):** A/B/C/D bank and per-section patterns done. Still to do: 2-8 bar patterns, piano-roll-lite for lead/chords, MIDI export of the whole arrangement (it exports the edited pattern).
 5. **AI arranger UI (M3):** "Arrange with AI" button posts song state to `/api/arrange`, renders a section timeline, plays it back. Tighten the JSON schema and validate the response.
 6. **Lab extras (M7/M8):** function wheel and Tonnetz views, emotion map (bright/dark × tense/resolved), "what chord next?" suggestions in the Groovebox, note names as an optional overlay, kick + bass frequency lock view.
 7. **Polish (M5):** AI mastering step, "reimagine" via Suno upload (check commercial terms), PWA install, optional Tauri wrap for Windows.

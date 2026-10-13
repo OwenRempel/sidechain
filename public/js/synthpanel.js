@@ -5,7 +5,7 @@
 //     audition: () => play one note, tryPhrase: () => play a short phrase,
 //     noteHz: () => pitch to draw the overtones at, analyser: () => AnalyserNode on the lead (or null),
 //     lastHz: () => pitch of the last note played, sampleRate: () => audio sample rate,
-//     part: () => 'lead' | 'bass' | 'pad', setPart: id => switch the host to that part (model() then returns it) })
+//     part: () => 'lead' | 'bass' | 'pad' | 'wash', setPart: id => switch the host to that part (model() then returns it) })
 // Expects inside root: #synPart (optional) #synH #synPreset #synTry #synSave #synDel #synWho #synMode #synSimple #synGroups
 // and the pictures #vzWave #vzSpec #vzEnv with captions #vcWave #vcSpec #vcEnv.
 function createSynthPanel(root, o) {

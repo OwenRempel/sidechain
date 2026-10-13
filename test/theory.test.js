@@ -95,3 +95,15 @@ test('takeToPattern snaps a played bar onto the lead grid', () => {
   // relative to the chord root: on chord IV (degree 3), F is d 0
   assert.equal(T.takeToPattern([{ n: 77, v: 1, t: 0, end: 0.1 }], { t0: 0, step, sc, base, root: 3 })[0].d, 0);
 });
+
+test('varyDrums: off leaves the pattern alone, on adds fills and is repeatable', () => {
+  const P = { kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], clap: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], hat: Array(16).fill(0.5), ohat: Array(16).fill(0) };
+  for (let st = 0; st < 16; st++) assert.deepEqual(T.varyDrums(P, st, 3, 0), { kick: P.kick[st], clap: P.clap[st], hat: P.hat[st], ohat: 0 });
+  const bar = st => T.varyDrums(P, st, 3, 1);
+  const fill = Array.from({ length: 16 }, (_, st) => bar(st));
+  assert.ok(fill.slice(12).some(x => x.clap > 0), 'the 4th bar ends in a snare fill');
+  assert.ok(fill.slice(12).every(x => x.hat === 0), 'hats drop out under the fill');
+  assert.deepEqual(fill, Array.from({ length: 16 }, (_, st) => bar(st)), 'same bar, same variation');
+  assert.equal(T.varyDrums(P, 0, 4, 1).ohat, 1, 'crash on the bar after a fill');
+  assert.equal(T.varyDrums(P, 12, 1, 1).clap, 1, 'a normal bar keeps its backbeat');
+});
