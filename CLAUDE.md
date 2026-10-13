@@ -21,11 +21,15 @@ Copy `.env.example` to `.env` and add `ANTHROPIC_API_KEY` to enable `/api/arrang
 ```
 server.js              static server + /api/arrange (Claude API proxy; key stays server-side)
 public/index.html      Groovebox page
+public/synth.html      Synth page: the lead synth full-size, pictures pinned on top, playable keyboard (touch, computer keys, Web MIDI) pinned at the bottom
 public/lab.html        Theory Lab page (Harmony + Rhythm tabs)
 public/css/app.css     shared tokens and components (dark hardware look, single theme)
 public/css/lab.css     lab-only styles
 public/js/groovebox.js sequencer, Web Audio synth engine, style generators (monolithic prototype)
-public/js/synth.js     lead synth params, presets, Simple-view macros, and the maths behind the synth pictures (wave, spectrum, envelope); pure + tested. lead() in groovebox.js plays it
+public/js/leadvoice.js startLead(ctx, dest, params, t, hz, vel) -> {release(at)}: the lead voice, shared by both pages
+public/js/synthpanel.js createSynthPanel(root, hooks): the lead synth panel UI + pictures, shared by both pages
+public/js/synthpage.js Synth page keyboard + audio; reads/writes only .synth/.synthId of localStorage['sidechain-v1'] and follows the Groovebox via the storage event
+public/js/synth.js     lead synth params, presets (with categories), Simple-view macros, and the maths behind the synth pictures (wave, spectrum, envelope); pure + tested. leadvoice.js plays it
 public/js/midi.js      Standard MIDI File export (type 1, drums ch10)
 public/js/theory.js    pure theory data and helpers (no DOM/audio, unit-testable)
 public/js/lab.js       Theory Lab UI and preview audio
@@ -54,7 +58,7 @@ Done (v0.1, untested in a real browser session, so verify audio first):
 
 1. **Engine refactor:** move instruments out of groovebox.js into `engine.js` as `createEngine(ctx)` so it works with an `OfflineAudioContext`. Unlocks:
 2. **WAV export:** render N bars offline (and stems per track).
-3. **Synth layer (M1):** lead synth panel done (osc + unison, layer osc, FM bell, filter + env, ADSR, LFO, 11 presets, save/load your own). It has a Simple view (Brightness, Thickness, Pluck ↔ Swell, Movement, Octave) and All controls, plus pictures of the wave (live while the lead plays), overtones vs. filter, and the note's volume/brightness over time. Keep envAt() in synth.js in step with lead() when changing the voice. Still to do: same panel for bass and chords. Originally: per-track synth panel with oscillator type, unison/detune, filter, ADSR, LFO, plus an FM bell layer for Marshmello-style chimes. Save/load presets.
+3. **Synth layer (M1):** lead synth panel done (osc + unison, layer osc, FM bell, filter + env, ADSR, LFO, 11 presets, save/load your own). It has a Simple view (Brightness, Thickness, Pluck ↔ Swell, Movement, Octave) and All controls, plus pictures of the wave (live while the lead plays), overtones vs. filter, and the note's volume/brightness over time. Keep envAt() in synth.js in step with leadvoice.js when changing the voice. 28 presets in 5 categories; Drive and Air (noise) controls; pop-out Synth page with keyboard. Still to do: same panel for bass and chords. Originally: per-track synth panel with oscillator type, unison/detune, filter, ADSR, LFO, plus an FM bell layer for Marshmello-style chimes. Save/load presets.
 4. **Multi-bar patterns (M2):** 4-8 bar patterns, A/B/C/D bank, piano-roll-lite for lead/chords.
 5. **AI arranger UI (M3):** "Arrange with AI" button posts song state to `/api/arrange`, renders a section timeline, plays it back. Tighten the JSON schema and validate the response.
 6. **Lab extras (M7/M8):** function wheel and Tonnetz views, emotion map (bright/dark × tense/resolved), "what chord next?" suggestions in the Groovebox, note names as an optional overlay, kick + bass frequency lock view.

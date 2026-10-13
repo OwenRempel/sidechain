@@ -164,27 +164,9 @@ function bass(t,f,dur,v,w){
   g.connect(musicBus);
 }
 // Lead voice built from S.synth (see synth.js): unison osc + layer osc, FM bell, filter + envelope, amp ADSR, LFO.
+// Lead notes come from leadvoice.js, built from S.synth (the Lead synth panel).
 let lastLeadF=440;
-function lead(t,f,dur,v){
-  lastLeadF=f;const p=S.synth,att=Math.max(.002,p.att),relAt=t+Math.max(dur,att),end=relAt+p.rel*5+.05,n=p.voices;
-  const mix=ctx.createGain(),flt=ctx.createBiquadFilter(),amp=ctx.createGain(),out=ctx.createGain(),oscs=[];
-  flt.type=p.ftype;flt.Q.value=p.res;mix.gain.value=1/(Math.sqrt(n)*(1+p.osc2*.7));
-  const osc=(wave,freq,det,lvl)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type=wave;g.gain.value=lvl;
-    if(p.blip){o.frequency.setValueAtTime(freq*Math.pow(2,p.blip/12),t);o.frequency.exponentialRampToValueAtTime(freq,t+.05)}else o.frequency.value=freq;
-    o.detune.value=det;o.connect(g).connect(mix);o.start(t);o.stop(end);oscs.push(o);return o};
-  const main=[];for(let k=0;k<n;k++)main.push(osc(p.wave,f,n>1?(k/(n-1)*2-1)*p.detune:0,1));
-  if(p.osc2>0)osc(p.wave2,f*Math.pow(2,p.semi2/12),0,p.osc2*Math.sqrt(n));
-  if(p.fm>0){const m=ctx.createOscillator(),mg=ctx.createGain(),mf=f*p.ratio,idx=mf*p.fm*6;m.frequency.value=mf;
-    mg.gain.setValueAtTime(idx,t);mg.gain.setTargetAtTime(idx*.08,t,p.fmDecay/3);m.connect(mg);main.forEach(o=>mg.connect(o.frequency));m.start(t);m.stop(end)}
-  const fTop=Math.min(18000,p.cut*(1+p.env*8));flt.frequency.setValueAtTime(fTop,t);flt.frequency.setTargetAtTime(p.cut,t+.003,p.fdec/3);
-  const pk=v*.2*p.vol;amp.gain.setValueAtTime(0,t);amp.gain.linearRampToValueAtTime(pk,t+att);amp.gain.setTargetAtTime(pk*p.sus,t+att,p.dec/3);
-  amp.gain.setTargetAtTime(0,relAt,p.rel/4);
-  if(p.lfo!=='off'&&p.lfoDepth>0){const l=ctx.createOscillator(),lg=ctx.createGain();l.frequency.value=p.lfoRate;l.connect(lg);l.start(t);l.stop(end);
-    if(p.lfo==='pitch'){lg.gain.value=p.lfoDepth*60;oscs.forEach(o=>lg.connect(o.detune))}
-    else if(p.lfo==='filter'){lg.gain.value=p.lfoDepth*p.cut*.9;lg.connect(flt.frequency)}
-    else{out.gain.value=1-p.lfoDepth/2;lg.gain.value=p.lfoDepth/2;lg.connect(out.gain)}}
-  mix.connect(flt).connect(amp).connect(out).connect(leadOut);
-}
+function lead(t,f,dur,v){lastLeadF=f;startLead(ctx,leadOut,S.synth,t,f,v).release(t+dur)}
 function pad(t,freqs,dur){
   const g=ctx.createGain(),lp=ctx.createBiquadFilter(),a=dur<.4?.01:Math.min(.35,dur*.25),end=t+dur+.7;lp.frequency.value=S.sound.padCut;
   freqs.forEach(f=>[-9,9].forEach(dt=>{const o=ctx.createOscillator();o.type='sawtooth';o.frequency.value=f;o.detune.value=dt;o.connect(lp);o.start(t);o.stop(end)}));
@@ -325,105 +307,21 @@ function syncTop(){
   if(!playing)$('#secN').textContent=firstSec();
   $('#arr').classList.toggle('off',!S.arrange);
 }
-/* lead synth panel: presets (built-in + your saved ones) and every Synth.PARAMS control, grouped */
-const USER_KEY='sidechain-presets';
-const userPresets=()=>{try{return JSON.parse(localStorage.getItem(USER_KEY))||{}}catch(e){return{}}};
-const setUserPresets=u=>{try{localStorage.setItem(USER_KEY,JSON.stringify(u))}catch(e){}};
-const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
-function synthSource(){const id=S.synthId||'';if(id.startsWith('u:')){const u=userPresets()[id.slice(2)];return u&&{name:id.slice(2),who:'Your sound',p:Synth.normalize(u)}}
-  const b=Synth.byId(id);return b&&{name:b.name,who:b.who,p:b.p}}
-function renderSynthHead(){
-  const u=Object.keys(userPresets()),src=synthSource();
-  $('#synPreset').innerHTML=(src?'':'<option value="" selected>Custom</option>')+
-    `<optgroup label="Presets">${Synth.PRESETS.map(x=>`<option value="${x.id}"${x.id===S.synthId?' selected':''}>${esc(x.name)}</option>`).join('')}</optgroup>`+
-    (u.length?`<optgroup label="My sounds">${u.map(n=>`<option value="u:${esc(n)}"${'u:'+n===S.synthId?' selected':''}>${esc(n)}</option>`).join('')}</optgroup>`:'');
-  $('#synDel').hidden=!(S.synthId||'').startsWith('u:');
-  drawViz();
-  $('#synWho').textContent=src?`${src.who}${Synth.same(src.p,S.synth)?'':' · edited'}`:'Your own tweaks. Save to keep them.';
-}
-function ctlHTML(s){const v=S.synth[s.k];
-  if(s.type==='choice')return`<div class="seg" role="group" aria-label="${s.label}"><span class="lbl">${s.label}</span>${s.options.map(([val,l])=>`<button data-k="${s.k}" data-v="${val}" aria-pressed="${val===v}">${l}</button>`).join('')}</div>`;
-  return`<label class="mac" for="sy-${s.k}"><header><span class="lbl">${s.label}</span><output id="syo-${s.k}">${s.fmt(v)}</output></header>
-    <input type="range" id="sy-${s.k}" data-k="${s.k}" min="${s.log?0:s.min}" max="${s.log?1:s.max}" step="${s.log?.001:s.step}" value="${Synth.toSlider(s,v)}"></label>`}
-const MODE_KEY='sidechain-synth-mode';let synMode='simple';try{synMode=localStorage.getItem(MODE_KEY)||'simple'}catch(e){}
-function macroHTML(m){const x=m.get(S.synth);return`<label class="mac" for="sm-${m.k}"><header><span class="lbl">${m.label}</span><output id="smo-${m.k}">${Math.round(x*100)}%</output></header>
-  <input type="range" id="sm-${m.k}" data-m="${m.k}" min="0" max="1" step="0.01" value="${x}"><small>${m.tip}</small></label>`}
-function renderSynth(){
-  renderSynthHead();
-  $('#synMode').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===synMode));
-  $('#synSimple').hidden=synMode!=='simple';$('#synGroups').hidden=synMode==='simple';
-  $('#synSimple').innerHTML=Synth.MACROS.map(macroHTML).join('')+ctlHTML(Synth.PARAMS.find(s=>s.k==='oct'));
-  $('#synGroups').innerHTML=Synth.GROUPS.map(g=>`<fieldset class="sgrp"><legend>${g.name}</legend><p class="tip">${g.tip}</p>
-    <div class="ctl">${Synth.PARAMS.filter(s=>s.g===g.id).map(ctlHTML).join('')}</div></fieldset>`).join('');
-}
-
-/* synth pictures: one cycle of the wave, overtones vs. the filter, and the shape of a note over time */
-const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-let fltCtx;try{fltCtx=new OfflineAudioContext(1,1,44100)}catch(e){}
-function fitCanvas(cv){const d=devicePixelRatio||1,w=cv.clientWidth*d,h=cv.clientHeight*d;if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}const c=cv.getContext('2d');c.clearRect(0,0,w,h);return[c,w,h,d]}
-function drawWave(live){
-  const[c,w,h,d]=fitCanvas($('#vzWave'));c.fillStyle=css('--panel2');c.fillRect(0,0,w,h);
-  c.strokeStyle=css('--line');c.lineWidth=d;c.beginPath();c.moveTo(0,h/2);c.lineTo(w,h/2);c.stroke();
-  let pts=Synth.waveShape(S.synth,240,2);
-  if(live){const a=new Float32Array(leadAn.fftSize);leadAn.getFloatTimeDomainData(a);let z=1;while(z<a.length/2&&!(a[z-1]<0&&a[z]>=0))z++;
-    const win=Math.min(a.length-z,Math.round(ctx.sampleRate/lastLeadF*2)),seg=a.slice(z,z+win),m=Math.max(1e-4,...seg.map(Math.abs));pts=Array.from(seg).map(v=>v/m)}
-  c.strokeStyle=css('--lead');c.lineWidth=(1.5+Math.min(S.synth.voices,7)*.35)*d;c.lineJoin='round';c.beginPath();
-  pts.forEach((v,i)=>{const x=i/(pts.length-1)*w,y=h/2-v*h*.4;i?c.lineTo(x,y):c.moveTo(x,y)});c.stroke();
-  $('#vcWave').textContent=Synth.describe(S.synth).tone+(live?' · live':'');
-}
-function drawSpec(){
-  const[c,w,h,d]=fitCanvas($('#vzSpec')),p=S.synth,f0=mtof(leadNote(S.prog[0])),lo=50,hi=16000,N=120;
-  c.fillStyle=css('--panel2');c.fillRect(0,0,w,h);
-  const sp=Synth.spectrum(p,f0,N,lo,hi),fr=new Float32Array(sp.map(o=>o.f)),mag=new Float32Array(N),ph=new Float32Array(N);
-  if(fltCtx){const b=fltCtx.createBiquadFilter();b.type=p.ftype;b.frequency.value=p.cut;b.Q.value=p.res;b.getFrequencyResponse(fr,mag,ph)}else mag.fill(1);
-  const db=v=>Math.max(0,1+20*Math.log10(Math.max(v,1e-5))/48),bw=w/N;   // 0 dB at top, -48 dB at the bottom
-  sp.forEach((o,i)=>{const raw=db(o.mag),kept=db(o.mag*mag[i]);
-    c.fillStyle=css('--line');c.fillRect(i*bw,h-raw*h,Math.max(1,bw-d),raw*h);
-    c.fillStyle=css('--lead');c.fillRect(i*bw,h-kept*h,Math.max(1,bw-d),kept*h)});
-  c.strokeStyle=css('--ink');c.lineWidth=1.5*d;c.beginPath();
-  Array.from(mag).forEach((m,i)=>{const x=(i+.5)*bw,y=Math.max(2*d,h*.15+(1-db(m))*h*.85);i?c.lineTo(x,y):c.moveTo(x,y)});c.stroke();
-  $('#vcSpec').textContent=`${Synth.describe(p).bright}. Grey = overtones in the tone, pink = what gets through the filter (white line).`;
-}
-function drawEnv(){
-  const[c,w,h,d]=fitCanvas($('#vzEnv')),p=S.synth,hold=Math.max(.5,p.att+.25),T=Math.min(4,hold+Math.max(.35,p.rel*1.3)),N=200,pad=10*d;
-  c.fillStyle=css('--panel2');c.fillRect(0,0,w,h);
-  const X=t=>t/T*w,Y=v=>h-pad/2-v*(h-pad*1.4),lfo=t=>p.lfo==='off'?0:p.lfoDepth*Math.sin(2*Math.PI*p.lfoRate*t);
-  c.strokeStyle=css('--line');c.setLineDash([3*d,3*d]);c.lineWidth=d;c.beginPath();c.moveTo(X(hold),0);c.lineTo(X(hold),h);c.stroke();c.setLineDash([]);
-  c.fillStyle=css('--dim');c.font=`${10*d}px ${css('--mono')}`;c.fillText('let go',X(hold)+3*d,11*d);
-  const pts=[];for(let i=0;i<=N;i++){const t=i/N*T,e=Synth.envAt(p,t,hold);let a=e.amp,ct=e.cut;
-    if(p.lfo==='amp')a*=1-p.lfoDepth/2+lfo(t)/2;if(p.lfo==='filter')ct*=1+lfo(t)*.9;pts.push([t,a,Math.log(Math.max(100,ct)/100)/Math.log(180)])}
-  c.fillStyle=css('--lead')+'55';c.strokeStyle=css('--lead');c.lineWidth=2*d;c.beginPath();c.moveTo(0,Y(0));pts.forEach(([t,a])=>c.lineTo(X(t),Y(a)));c.lineTo(w,Y(0));c.fill();
-  c.beginPath();pts.forEach(([t,a],i)=>i?c.lineTo(X(t),Y(a)):c.moveTo(X(t),Y(a)));c.stroke();
-  c.strokeStyle=css('--ink');c.lineWidth=1.2*d;c.setLineDash([4*d,3*d]);c.beginPath();pts.forEach(([t,,b],i)=>i?c.lineTo(X(t),Y(b)):c.moveTo(X(t),Y(b)));c.stroke();c.setLineDash([]);
-  if(p.lfo==='pitch'&&p.lfoDepth>.01){c.strokeStyle=css('--dim');c.lineWidth=d;c.beginPath();for(let i=0;i<=N;i++){const t=i/N*T,y=6*d+lfo(t)*4*d;i?c.lineTo(X(t),y):c.moveTo(X(t),y)}c.stroke()}
-  $('#vcEnv').textContent=`${Synth.describe(p).shape}. Pink = volume, dashed = brightness, over ${T.toFixed(1)} s.`;
-}
-let vizLive=false;
-function drawViz(){if(!$('#synth'))return;drawWave(false);drawSpec();drawEnv()}
-// Called every frame from draw(): swaps the wave picture to the real lead output while it sounds.
-function tickViz(){if(!leadAn)return;const a=new Float32Array(256);leadAn.getFloatTimeDomainData(a);const on=a.some(v=>Math.abs(v)>.003);
-  if(on)drawWave(true);else if(vizLive)drawWave(false);vizLive=on}
 function ensureAudio(){if(!ctx)initAudio();ctx.resume();return ctx.currentTime+.03}
 function audition(){if(playing)return;const t=ensureAudio();lead(t,mtof(leadNote(S.prog[0])),.32,1)}
 // Try: a short phrase over the first chord, so you hear the sound in context.
 function tryPhrase(){if(playing)return;const t=ensureAudio(),r=S.prog[0],sd=60/S.bpm/4;
   pad(t,chordFreqs(r),sd*14);[[0,0,2],[2,2,1],[4,3,1],[7,4,2],[4,6,2],[2,8,1],[0,9,5]].forEach(([d,st,len])=>lead(t+st*sd*1.5,mtof(leadNote(r+d)),len*sd*1.4,st?.85:1))}
-function setSynth(k,v){S.synth[k]=v;renderSynthHead();save()}
-$('#synPreset').onchange=e=>{const id=e.target.value;if(!id)return;S.synthId=id;const src=synthSource();if(src)S.synth=Synth.normalize(src.p);renderSynth();save();audition()};
-$('#synTry').onclick=tryPhrase;
-$('#synSave').onclick=()=>{const cur=synthSource(),name=(prompt('Name this sound',cur&&S.synthId.startsWith('u:')?cur.name:(cur?cur.name+' (mine)':'My lead'))||'').trim().slice(0,40);if(!name)return;
-  const u=userPresets();u[name]={...S.synth};setUserPresets(u);S.synthId='u:'+name;renderSynthHead();save()};
-$('#synDel').onclick=()=>{const id=S.synthId||'';if(!id.startsWith('u:')||!confirm(`Delete "${id.slice(2)}"?`))return;const u=userPresets();delete u[id.slice(2)];setUserPresets(u);S.synthId='';renderSynthHead();save()};
-$('#synMode').onclick=e=>{const b=e.target.closest('button');if(!b)return;synMode=b.dataset.m;try{localStorage.setItem(MODE_KEY,synMode)}catch(e){}renderSynth()};
-$('#synSimple').oninput=e=>{const m=e.target.dataset.m,k=e.target.dataset.k;
-  if(m){S.synth=Synth.applyMacro(S.synth,m,+e.target.value);$('#smo-'+m).textContent=Math.round(e.target.value*100)+'%';renderSynthHead();save()}
-  else if(k){const s=Synth.PARAMS.find(p=>p.k===k),v=Synth.fromSlider(s,+e.target.value);setSynth(k,v);$('#syo-'+k).textContent=s.fmt(v)}};
-$('#synSimple').onchange=e=>{if(e.target.type==='range')audition()};
-$('#synGroups').oninput=e=>{const k=e.target.dataset.k,s=k&&Synth.PARAMS.find(p=>p.k===k);if(!s||s.type==='choice')return;
-  const v=Synth.fromSlider(s,+e.target.value);setSynth(k,v);$('#syo-'+k).textContent=s.fmt(v)};
-$('#synGroups').onchange=e=>{if(e.target.type==='range')audition()};
-$('#synGroups').onclick=e=>{const b=e.target.closest('.seg button');if(!b)return;setSynth(b.dataset.k,b.dataset.v);
-  b.parentElement.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));audition()};
+/* lead synth panel (synthpanel.js); the pop-out Synth page edits the same S.synth through localStorage */
+const synthPanel=createSynthPanel($('#synth'),{model:()=>S,persist:()=>save(),audition,tryPhrase,noteHz:()=>mtof(leadNote(S.prog[0])),
+  analyser:()=>leadAn||null,lastHz:()=>lastLeadF,sampleRate:()=>ctx?ctx.sampleRate:44100});
+const renderSynth=()=>synthPanel.render();
+$('#synPop').onclick=()=>{save();window.open('synth.html','sidechain-synth')};
+window.addEventListener('storage',e=>{
+  if(e.key==='sidechain-presets')return synthPanel.renderHead();
+  if(e.key!=='sidechain-v1'||!e.newValue)return;
+  try{const n=JSON.parse(e.newValue);if(n.synth&&JSON.stringify(n.synth)!==JSON.stringify(S.synth)){S.synth=Synth.normalize(n.synth);S.synthId=n.synthId;renderSynth()}}catch(err){}
+});
 
 function renderEverything(){renderAll();renderProg();renderEditor();renderArr();renderSynth();syncMacros();syncTop();applyAudio();save()}
 
@@ -475,7 +373,7 @@ $('#grid').onclick=e=>{
 /* ---------- playhead + scope ---------- */
 const cv=$('#scope'),cx=cv.getContext('2d');let wave;
 function draw(){
-  requestAnimationFrame(draw);tickViz();
+  requestAnimationFrame(draw);synthPanel.tick();
   if(playing&&ctx){let cur=null;while(q.length&&q[0].t<=ctx.currentTime)cur=q.shift();
     if(cur){setPH(cur.st);if(cur.st===0||lastBar!==cur.bar){lastBar=cur.bar;$('#barN').textContent=cur.bar+1;$('#secN').textContent=cur.sec||'Loop';showChord(cur.bar%S.prog.length)}}}
   const dpr=devicePixelRatio||1,w=cv.clientWidth*dpr,h=cv.clientHeight*dpr;if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}

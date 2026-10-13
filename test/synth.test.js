@@ -17,8 +17,10 @@ test('every param has a group, a default and a sane range', () => {
   }
 });
 
-test('presets are unique and already in range', () => {
+test('presets are unique, filed in a category and already in range', () => {
   assert.equal(new Set(Synth.PRESETS.map(p => p.id)).size, Synth.PRESETS.length);
+  for (const pr of Synth.PRESETS) assert.ok(Synth.CATS.some(([c]) => c === pr.cat), `${pr.name} category`);
+  for (const [c] of Synth.CATS) assert.ok(Synth.PRESETS.some(pr => pr.cat === c), `${c} has presets`);
   for (const pr of Synth.PRESETS) assert.ok(Synth.same(Synth.normalize(pr.p), pr.p), pr.name);
 });
 
