@@ -37,7 +37,7 @@ http.createServer(async (req, res) => {
   if (req.method === 'POST' && req.url === '/api/arrange') {
     let body = ''; req.on('data', c => (body += c));
     req.on('end', async () => {
-      try { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(await arrange(JSON.parse(body)))); }
+      try { const out = await arrange(JSON.parse(body)); res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(out)); }
       catch (e) { res.writeHead(500, { 'content-type': 'application/json' }); res.end(JSON.stringify({ error: e.message })); }
     });
     return;

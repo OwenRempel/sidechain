@@ -114,3 +114,5 @@ const Theory = (() => {
   }
   return { NOTE, SCALE, QUAL, DEGREES, PROGRESSIONS, MOVES, INTERVALS, BEATS, JOBS, chordNotes, chordName, degreeChord, mtof, parseBeat, beatStats };
 })();
+
+if (typeof module !== 'undefined') module.exports = Theory; // lets node --test require it; browsers ignore this
