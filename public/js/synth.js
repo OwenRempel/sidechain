@@ -4,6 +4,7 @@ const Synth = (() => {
   const WAVES = [['sine', 'Sine'], ['triangle', 'Tri'], ['square', 'Square'], ['sawtooth', 'Saw']];
   const FILTERS = [['lowpass', 'Low'], ['bandpass', 'Band'], ['highpass', 'High']];
   const LFO_TARGETS = [['off', 'Off'], ['pitch', 'Pitch'], ['filter', 'Filter'], ['amp', 'Volume']];
+  const MODES = [['poly', 'Poly'], ['mono', 'Mono']];
   const INTERVAL = { '-12': 'oct down', '-5': '4th down', 0: 'unison', 3: 'min 3rd', 4: 'maj 3rd', 5: '4th', 7: '5th', 12: 'oct up', 19: '5th+oct', 24: '2 oct up' };
 
   const ms = v => (v < 1 ? Math.round(v * 1000) + ' ms' : v.toFixed(2) + ' s');
@@ -19,6 +20,8 @@ const Synth = (() => {
     { id: 'filter', name: 'Filter', tip: 'Shapes the brightness. Low-pass darkens, resonance adds a squelchy peak, and the envelope makes each note start bright then close down (that is a pluck). Drive pushes the sound into distortion for grit and bite.' },
     { id: 'amp', name: 'Envelope', tip: 'The shape of each note over time: how fast it starts, fades, holds and lets go. Short decay with no sustain = pluck. Slow attack = swell.' },
     { id: 'lfo', name: 'Movement (LFO)', tip: 'A slow wave that moves something for you. Pitch = vibrato, filter = wobble, volume = tremolo.' },
+    { id: 'space', name: 'Width', tip: 'Chorus doubles the sound with slightly wobbling copies for a lush, shimmery feel. Width spreads the stacked voices left and right.' },
+    { id: 'play', name: 'Playing', tip: 'Mono plays one note at a time, so with Glide each note slides into the next (classic for leads and acid basslines). Velocity is how much playing harder makes notes louder and brighter.' },
   ];
 
   // type: 'choice' (buttons), 'range' (slider). log: slider moves exponentially between min and max.
@@ -49,6 +52,11 @@ const Synth = (() => {
     { k: 'lfo', g: 'lfo', label: 'Target', type: 'choice', options: LFO_TARGETS },
     { k: 'lfoRate', g: 'lfo', label: 'Rate', min: 0.1, max: 12, log: true, fmt: v => v.toFixed(1) + ' Hz' },
     { k: 'lfoDepth', g: 'lfo', label: 'Depth', min: 0, max: 1, step: 0.01, fmt: pct },
+    { k: 'chorus', g: 'space', label: 'Chorus', min: 0, max: 1, step: 0.01, fmt: v => (v ? pct(v) : 'off') },
+    { k: 'width', g: 'space', label: 'Width', min: 0, max: 1, step: 0.01, fmt: v => (v ? pct(v) : 'mono') },
+    { k: 'mono', g: 'play', label: 'Notes', type: 'choice', options: MODES },
+    { k: 'glide', g: 'play', label: 'Glide', min: 0, max: 0.5, step: 0.01, fmt: v => (v ? Math.round(v * 1000) + ' ms' : 'off') },
+    { k: 'vel', g: 'play', label: 'Velocity', min: 0, max: 1, step: 0.01, fmt: v => (v ? pct(v) : 'off') },
   ];
 
   const BASE = {
@@ -58,39 +66,40 @@ const Synth = (() => {
     ftype: 'lowpass', cut: 6000, res: 1, env: 0.3, fdec: 0.2, drive: 0,
     att: 0.005, dec: 0.3, sus: 0.6, rel: 0.15, vol: 0.8,
     lfo: 'off', lfoRate: 5, lfoDepth: 0.2,
+    chorus: 0, width: 0.4, mono: 'poly', glide: 0.08, vel: 0.5,
   };
   const P = o => ({ ...BASE, ...o });
 
   // Common lead sounds. Each one is a starting point, not a finished patch.
   const PRESETS = [
     { id: 'chime', cat: 'bells', name: 'Future bass chime', who: 'Marshmello', p: P({ wave: 'sine', voices: 2, detune: 5, oct: 1, blip: 2, osc2: 0.3, semi2: 12, fm: 0.35, ratio: 3.5, fmDecay: 0.25, cut: 7000, env: 0.3, att: 0.003, dec: 0.4, sus: 0.35, rel: 0.4, vol: 0.85 }) },
-    { id: 'supersaw', cat: 'big', name: 'Supersaw', who: 'Trance, future bass drops', p: P({ wave: 'sawtooth', voices: 7, detune: 25, wave2: 'sawtooth', osc2: 0.5, semi2: -12, cut: 5000, env: 0.4, fdec: 0.3, att: 0.01, dec: 0.3, sus: 0.8, rel: 0.3, vol: 1 }) },
+    { id: 'supersaw', cat: 'big', name: 'Supersaw', who: 'Trance, future bass drops', p: P({ wave: 'sawtooth', voices: 7, detune: 25, wave2: 'sawtooth', osc2: 0.5, semi2: -12, cut: 5000, env: 0.4, fdec: 0.3, att: 0.01, dec: 0.3, sus: 0.8, rel: 0.3, vol: 1, width: 0.8, chorus: 0.3 }) },
     { id: 'chip', cat: 'retro', name: 'Chiptune square', who: 'TheFatRat, 8-bit', p: P({ wave: 'square', cut: 12000, res: 0, env: 0, att: 0.002, dec: 0.1, sus: 0.7, rel: 0.05, lfo: 'pitch', lfoRate: 6, lfoDepth: 0.15, vol: 0.6 }) },
     { id: 'pluck', cat: 'plucks', name: 'Bright pluck', who: 'TheFatRat, house', p: P({ wave: 'sawtooth', voices: 2, detune: 8, wave2: 'square', osc2: 0.4, semi2: 12, cut: 900, res: 6, env: 1, fdec: 0.15, att: 0.002, dec: 0.25, sus: 0, rel: 0.2, vol: 1 }) },
-    { id: 'squarelead', cat: 'leads', name: 'Square lead', who: 'Glitch-hop, dubstep', p: P({ wave: 'square', voices: 2, detune: 10, wave2: 'square', osc2: 0.4, semi2: 12, cut: 3000, res: 3, env: 0.5, fdec: 0.2, att: 0.003, dec: 0.3, sus: 0.6, rel: 0.15, lfo: 'pitch', lfoRate: 5.5, lfoDepth: 0.1, vol: 0.65 }) },
+    { id: 'squarelead', cat: 'leads', name: 'Square lead', who: 'Glitch-hop, dubstep', p: P({ wave: 'square', voices: 2, detune: 10, wave2: 'square', osc2: 0.4, semi2: 12, cut: 3000, res: 3, env: 0.5, fdec: 0.2, att: 0.003, dec: 0.3, sus: 0.6, rel: 0.15, lfo: 'pitch', lfoRate: 5.5, lfoDepth: 0.1, vol: 0.65, mono: 'mono', glide: 0.05 }) },
     { id: 'bell', cat: 'bells', name: 'Cinematic bell', who: 'Matthew Parker', p: P({ wave: 'sine', oct: 1, fm: 0.6, ratio: 3.5, fmDecay: 0.8, cut: 9000, env: 0, att: 0.002, dec: 1.2, sus: 0, rel: 1, vol: 0.6 }) },
-    { id: 'keys', cat: 'plucks', name: 'Electric piano', who: 'Matthew Parker, lo-fi', p: P({ wave: 'sine', wave2: 'triangle', osc2: 0.25, semi2: 12, fm: 0.25, ratio: 1, fmDecay: 0.5, cut: 6000, res: 0, env: 0.1, att: 0.003, dec: 0.8, sus: 0.25, rel: 0.35, lfo: 'amp', lfoRate: 4, lfoDepth: 0.2, vol: 0.9 }) },
-    { id: 'acid', cat: 'leads', name: 'Acid squelch', who: 'Techno, acid house', p: P({ wave: 'sawtooth', cut: 500, res: 14, env: 1, fdec: 0.2, att: 0.003, dec: 0.2, sus: 0.5, rel: 0.08, vol: 0.7 }) },
+    { id: 'keys', cat: 'plucks', name: 'Electric piano', who: 'Matthew Parker, lo-fi', p: P({ wave: 'sine', wave2: 'triangle', osc2: 0.25, semi2: 12, fm: 0.25, ratio: 1, fmDecay: 0.5, cut: 6000, res: 0, env: 0.1, att: 0.003, dec: 0.8, sus: 0.25, rel: 0.35, lfo: 'amp', lfoRate: 4, lfoDepth: 0.2, vol: 0.9, chorus: 0.4 }) },
+    { id: 'acid', cat: 'leads', name: 'Acid squelch', who: 'Techno, acid house', p: P({ wave: 'sawtooth', cut: 500, res: 14, env: 1, fdec: 0.2, att: 0.003, dec: 0.2, sus: 0.5, rel: 0.08, vol: 0.7, mono: 'mono', glide: 0.06 }) },
     { id: 'brass', cat: 'retro', name: 'Synthwave brass', who: 'Synthwave, 80s', p: P({ wave: 'sawtooth', voices: 3, detune: 12, wave2: 'square', osc2: 0.5, semi2: 0, cut: 1500, res: 2, env: 0.6, fdec: 0.5, att: 0.06, dec: 0.5, sus: 0.7, rel: 0.3, lfo: 'pitch', lfoRate: 5, lfoDepth: 0.08, vol: 0.7 }) },
-    { id: 'flute', cat: 'leads', name: 'Soft flute', who: 'Chill, DnB melodies', p: P({ wave: 'triangle', wave2: 'sine', osc2: 0.2, semi2: 12, cut: 4000, res: 0.5, env: 0.1, att: 0.06, dec: 0.3, sus: 0.8, rel: 0.25, lfo: 'pitch', lfoRate: 5, lfoDepth: 0.2, vol: 0.7 }) },
+    { id: 'flute', cat: 'leads', name: 'Soft flute', who: 'Chill, DnB melodies', p: P({ wave: 'triangle', wave2: 'sine', osc2: 0.2, semi2: 12, cut: 4000, res: 0.5, env: 0.1, att: 0.06, dec: 0.3, sus: 0.8, rel: 0.25, lfo: 'pitch', lfoRate: 5, lfoDepth: 0.2, vol: 0.7, mono: 'mono', glide: 0.08 }) },
     { id: 'wobble', cat: 'leads', name: 'Wobble lead', who: 'Dubstep, riddim', p: P({ wave: 'sawtooth', voices: 3, detune: 15, cut: 600, res: 8, env: 0.2, att: 0.005, dec: 0.3, sus: 0.8, rel: 0.1, lfo: 'filter', lfoRate: 4, lfoDepth: 0.7, vol: 0.55 }) },
     { id: 'trancepluck', cat: 'plucks', name: 'Trance pluck', who: 'Trance, progressive house', p: P({ wave: 'sawtooth', voices: 5, detune: 18, cut: 1200, res: 4, env: 0.9, fdec: 0.12, att: 0.002, dec: 0.22, sus: 0, rel: 0.25, vol: 1 }) },
     { id: 'marimba', cat: 'plucks', name: 'Tropical marimba', who: 'Tropical house, Kygo', p: P({ wave: 'sine', fm: 0.4, ratio: 4, fmDecay: 0.08, cut: 8000, env: 0, att: 0.002, dec: 0.35, sus: 0, rel: 0.2, vol: 0.95 }) },
     { id: 'kalimba', cat: 'plucks', name: 'Kalimba', who: 'Chill, lo-fi, cinematic', p: P({ wave: 'sine', oct: 1, fm: 0.3, ratio: 5, fmDecay: 0.05, cut: 9000, env: 0, att: 0.002, dec: 0.5, sus: 0, rel: 0.3, vol: 0.9 }) },
     { id: 'lofikeys', cat: 'plucks', name: 'Lo-fi keys', who: 'Lo-fi hip-hop, chill beats', p: P({ wave: 'triangle', wave2: 'sine', osc2: 0.2, semi2: 12, noise: 0.06, cut: 2200, res: 0.5, env: 0.15, drive: 0.2, att: 0.004, dec: 0.7, sus: 0.3, rel: 0.4, lfo: 'pitch', lfoRate: 0.6, lfoDepth: 0.15, vol: 0.9 }) },
     { id: 'harp', cat: 'plucks', name: 'Harp pluck', who: 'Matthew Parker, cinematic', p: P({ wave: 'triangle', wave2: 'sine', osc2: 0.3, semi2: 12, cut: 5000, env: 0.4, fdec: 0.2, att: 0.002, dec: 0.9, sus: 0, rel: 0.6, vol: 0.9 }) },
-    { id: 'bigroom', cat: 'big', name: 'Big room lead', who: 'Big room, festival EDM', p: P({ wave: 'sawtooth', voices: 7, detune: 30, wave2: 'sawtooth', osc2: 0.6, semi2: -12, cut: 7000, env: 0.2, drive: 0.4, att: 0.005, dec: 0.2, sus: 1, rel: 0.1, vol: 0.85 }) },
-    { id: 'hoover', cat: 'big', name: 'Hoover', who: 'Rave, hardstyle, 90s', p: P({ wave: 'sawtooth', voices: 5, detune: 40, wave2: 'square', osc2: 0.6, semi2: -12, blip: 3, cut: 3000, res: 2, env: 0.3, att: 0.01, dec: 0.4, sus: 0.8, rel: 0.25, lfo: 'pitch', lfoRate: 5, lfoDepth: 0.15, vol: 0.75 }) },
-    { id: 'swell', cat: 'big', name: 'Supersaw swell', who: 'Future bass intros, trance breakdowns', p: P({ wave: 'sawtooth', voices: 7, detune: 30, wave2: 'sawtooth', osc2: 0.4, semi2: 12, cut: 4000, env: 0.1, att: 0.5, dec: 1, sus: 1, rel: 1.2, vol: 0.9 }) },
-    { id: 'reese', cat: 'leads', name: 'Reese lead', who: 'Drum & bass, neuro', p: P({ wave: 'sawtooth', voices: 2, detune: 20, wave2: 'sawtooth', osc2: 0.7, semi2: -12, cut: 900, res: 3, env: 0.2, drive: 0.3, att: 0.005, dec: 0.3, sus: 0.9, rel: 0.15, lfo: 'filter', lfoRate: 0.4, lfoDepth: 0.4, vol: 0.75 }) },
-    { id: 'whistle', cat: 'leads', name: 'Whistle', who: 'Pop-EDM toplines', p: P({ wave: 'sine', oct: 1, noise: 0.05, cut: 9000, env: 0, att: 0.04, dec: 0.3, sus: 0.9, rel: 0.15, lfo: 'pitch', lfoRate: 5.5, lfoDepth: 0.25, vol: 0.6 }) },
-    { id: 'vocal', cat: 'leads', name: 'Vocal "ooh"', who: 'Future bass vocal-chop feel', p: P({ wave: 'sawtooth', wave2: 'sawtooth', osc2: 0.3, semi2: 12, ftype: 'bandpass', cut: 900, res: 3, env: 0.1, att: 0.05, dec: 0.3, sus: 0.8, rel: 0.25, lfo: 'pitch', lfoRate: 5, lfoDepth: 0.12, vol: 1 }) },
+    { id: 'bigroom', cat: 'big', name: 'Big room lead', who: 'Big room, festival EDM', p: P({ wave: 'sawtooth', voices: 7, detune: 30, wave2: 'sawtooth', osc2: 0.6, semi2: -12, cut: 7000, env: 0.2, drive: 0.4, att: 0.005, dec: 0.2, sus: 1, rel: 0.1, vol: 0.85, width: 0.8, chorus: 0.2 }) },
+    { id: 'hoover', cat: 'big', name: 'Hoover', who: 'Rave, hardstyle, 90s', p: P({ wave: 'sawtooth', voices: 5, detune: 40, wave2: 'square', osc2: 0.6, semi2: -12, blip: 3, cut: 3000, res: 2, env: 0.3, att: 0.01, dec: 0.4, sus: 0.8, rel: 0.25, lfo: 'pitch', lfoRate: 5, lfoDepth: 0.15, vol: 0.75, mono: 'mono', glide: 0.12, width: 0.8 }) },
+    { id: 'swell', cat: 'big', name: 'Supersaw swell', who: 'Future bass intros, trance breakdowns', p: P({ wave: 'sawtooth', voices: 7, detune: 30, wave2: 'sawtooth', osc2: 0.4, semi2: 12, cut: 4000, env: 0.1, att: 0.5, dec: 1, sus: 1, rel: 1.2, vol: 0.9, width: 0.9, chorus: 0.4 }) },
+    { id: 'reese', cat: 'leads', name: 'Reese lead', who: 'Drum & bass, neuro', p: P({ wave: 'sawtooth', voices: 2, detune: 20, wave2: 'sawtooth', osc2: 0.7, semi2: -12, cut: 900, res: 3, env: 0.2, drive: 0.3, att: 0.005, dec: 0.3, sus: 0.9, rel: 0.15, lfo: 'filter', lfoRate: 0.4, lfoDepth: 0.4, vol: 0.75, mono: 'mono', glide: 0.1, width: 0.7 }) },
+    { id: 'whistle', cat: 'leads', name: 'Whistle', who: 'Pop-EDM toplines', p: P({ wave: 'sine', oct: 1, noise: 0.05, cut: 9000, env: 0, att: 0.04, dec: 0.3, sus: 0.9, rel: 0.15, lfo: 'pitch', lfoRate: 5.5, lfoDepth: 0.25, vol: 0.6, mono: 'mono', glide: 0.1 }) },
+    { id: 'vocal', cat: 'leads', name: 'Vocal "ooh"', who: 'Future bass vocal-chop feel', p: P({ wave: 'sawtooth', wave2: 'sawtooth', osc2: 0.3, semi2: 12, ftype: 'bandpass', cut: 900, res: 3, env: 0.1, att: 0.05, dec: 0.3, sus: 0.8, rel: 0.25, lfo: 'pitch', lfoRate: 5, lfoDepth: 0.12, vol: 1, chorus: 0.3, mono: 'mono', glide: 0.06 }) },
     { id: 'growl', cat: 'leads', name: 'Dubstep growl', who: 'Dubstep, riddim, brostep', p: P({ wave: 'sawtooth', voices: 3, detune: 10, wave2: 'square', osc2: 0.5, semi2: -12, fm: 0.4, ratio: 1, fmDecay: 2, cut: 1200, res: 10, env: 0.2, drive: 0.7, att: 0.005, dec: 0.3, sus: 0.9, rel: 0.1, lfo: 'filter', lfoRate: 6, lfoDepth: 0.8, vol: 0.55 }) },
     { id: 'musicbox', cat: 'bells', name: 'Music box', who: 'Lullaby intros, cinematic', p: P({ wave: 'sine', oct: 2, fm: 0.2, ratio: 4.5, fmDecay: 0.3, cut: 10000, env: 0, att: 0.002, dec: 0.8, sus: 0, rel: 0.5, vol: 0.8 }) },
     { id: 'glass', cat: 'bells', name: 'Glass bell', who: 'Ambient, future garage', p: P({ wave: 'sine', oct: 1, wave2: 'sine', osc2: 0.25, semi2: 19, fm: 0.45, ratio: 7, fmDecay: 0.6, cut: 10000, env: 0, att: 0.003, dec: 1.4, sus: 0.1, rel: 1.2, vol: 0.7 }) },
     { id: 'tri8', cat: 'retro', name: '8-bit triangle', who: 'NES, chiptune', p: P({ wave: 'triangle', cut: 12000, res: 0, env: 0, att: 0.002, dec: 0.1, sus: 0.85, rel: 0.04, vol: 0.7 }) },
     { id: 'arp', cat: 'retro', name: 'Synthwave arp', who: 'Synthwave, outrun', p: P({ wave: 'sawtooth', voices: 2, detune: 8, wave2: 'square', osc2: 0.3, semi2: 12, cut: 1400, res: 5, env: 0.7, fdec: 0.18, att: 0.002, dec: 0.2, sus: 0.2, rel: 0.15, vol: 1 }) },
-    { id: 'softpad', cat: 'big', name: 'Soft pad lead', who: 'Ambient, chill, Matthew Parker', p: P({ wave: 'triangle', voices: 3, detune: 12, wave2: 'sine', osc2: 0.3, semi2: 12, noise: 0.03, cut: 3000, env: 0, att: 0.25, dec: 0.8, sus: 0.9, rel: 0.8, lfo: 'amp', lfoRate: 0.3, lfoDepth: 0.2, vol: 0.9 }) },
+    { id: 'softpad', cat: 'big', name: 'Soft pad lead', who: 'Ambient, chill, Matthew Parker', p: P({ wave: 'triangle', voices: 3, detune: 12, wave2: 'sine', osc2: 0.3, semi2: 12, noise: 0.03, cut: 3000, env: 0, att: 0.25, dec: 0.8, sus: 0.9, rel: 0.8, lfo: 'amp', lfoRate: 0.3, lfoDepth: 0.2, vol: 0.9, chorus: 0.5, width: 0.6 }) },
   ];
   const CATS = [['plucks', 'Plucks & keys'], ['leads', 'Leads'], ['bells', 'Bells & mallets'], ['big', 'Big & wide'], ['retro', 'Retro & chip']];
   const byId = id => PRESETS.find(x => x.id === id);
@@ -120,7 +129,7 @@ const Synth = (() => {
     { k: 'bright', label: 'Brightness', tip: 'Dark and muffled → bright and cutting',
       get: p => toSlider(spec('cut'), p.cut), set: (p, x) => ({ cut: fromSlider(spec('cut'), x) }) },
     { k: 'width', label: 'Thickness', tip: 'One thin voice → a wide stack of slightly detuned voices',
-      get: p => (p.voices - 1) / 6, set: (p, x) => ({ voices: 1 + Math.round(x * 6), detune: Math.round(x * 35) }) },
+      get: p => (p.voices - 1) / 6, set: (p, x) => ({ voices: 1 + Math.round(x * 6), detune: Math.round(x * 35), width: +(x * 0.9).toFixed(2) }) },
     { k: 'shape', label: 'Pluck ↔ Swell', tip: 'Short plucks → notes that hold → slow fade-ins',
       get: p => (p.att > 0.02 ? 0.5 + 0.5 * Math.min(1, Math.log(p.att / 0.005) / Math.log(0.6 / 0.005)) : Math.min(0.5, p.sus * 0.5 / 0.6)),
       set: (p, x) => { const [a, b] = x < 0.5 ? [SHAPES[0], SHAPES[1]] : [SHAPES[1], SHAPES[2]], y = x < 0.5 ? x * 2 : x * 2 - 1;
@@ -183,12 +192,12 @@ const Synth = (() => {
   const brightWord = c => (c < 600 ? 'Dark' : c < 2500 ? 'Warm' : c < 7000 ? 'Bright' : 'Very bright');
   function describe(p) {
     const wn = Object.fromEntries(WAVES)[p.wave], w2 = Object.fromEntries(WAVES)[p.wave2];
-    const tone = `${wn}${p.voices > 1 ? ` × ${p.voices} voices` : ''}${p.osc2 > 0.02 ? ` + ${w2} ${INTERVAL[p.semi2] || p.semi2 + ' st'}` : ''}${p.fm > 0.02 ? ' + bell shimmer' : ''}${p.noise > 0.02 ? ' + air' : ''}`;
+    const tone = `${wn}${p.voices > 1 ? ` × ${p.voices} voices` : ''}${p.osc2 > 0.02 ? ` + ${w2} ${INTERVAL[p.semi2] || p.semi2 + ' st'}` : ''}${p.fm > 0.02 ? ' + bell shimmer' : ''}${p.noise > 0.02 ? ' + air' : ''}${p.chorus > 0.05 ? ' · chorus' : ''}${p.mono === 'mono' ? ' · mono' + (p.glide > 0.005 ? ' glide' : '') : ''}`;
     const shape = p.att > 0.1 ? 'Swell: fades in slowly' : p.sus < 0.1 ? 'Pluck: hits, then fades away' : p.sus > 0.75 ? 'Holds steady while the note is on' : 'Hits, then settles to a lower level';
     const move = p.lfo === 'off' || p.lfoDepth < 0.01 ? '' : ` · ${{ pitch: 'Vibrato', filter: 'Filter wobble', amp: 'Tremolo' }[p.lfo]} at ${p.lfoRate.toFixed(1)} Hz`;
     return { tone, bright: `${brightWord(p.cut)}${p.res > 6 ? ', with a resonant peak' : ''}${p.drive > 0.15 ? ', driven' : ''}${p.env > 0.3 ? ', opens on each hit' : ''}`, shape: shape + move };
   }
 
-  return { WAVES, FILTERS, LFO_TARGETS, GROUPS, PARAMS, BASE, PRESETS, CATS, MACROS, byId, normalize, toSlider, fromSlider, same, applyMacro, toneAt, waveShape, spectrum, envAt, describe };
+  return { WAVES, FILTERS, LFO_TARGETS, MODES, GROUPS, PARAMS, BASE, PRESETS, CATS, MACROS, byId, normalize, toSlider, fromSlider, same, applyMacro, toneAt, waveShape, spectrum, envAt, describe };
 })();
 if (typeof module !== 'undefined') module.exports = Synth; // lets node --test require it; browsers ignore this

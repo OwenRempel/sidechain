@@ -48,10 +48,79 @@ panel.render();
 
 /* keyboard: two octaves, notes in the song's key marked, played by touch, mouse, computer keys or a MIDI keyboard */
 let kbOct = 4; try { kbOct = +localStorage.getItem(OCT_KEY) || 4; } catch (e) {}
-const held = new Map();   // note -> voice
+const held = new Map();   // pressed note -> velocity
 const COMPUTER = 'awsedftgyhujkolp;\'';
-function noteOn(n, v = 1) { if (held.has(n)) return; held.set(n, play(n, v)); keyEl(n)?.classList.add('down'); }
-function noteOff(n) { const vc = held.get(n); if (!vc) return; vc.release(ctx.currentTime); held.delete(n); keyEl(n)?.classList.remove('down'); }
+function noteOn(n, v = 0.9) {
+  if (held.has(n)) return;
+  if (arp.mode !== 'off' && arp.hold && !held.size) arp.notes.clear();   // Hold: a fresh chord replaces the latched one
+  held.set(n, v); keyEl(n)?.classList.add('down');
+  if (arp.mode !== 'off') { arp.notes.set(n, v); arpStart(); } else voiceOn(n, v);
+}
+function noteOff(n) {
+  if (!held.has(n)) return; held.delete(n); keyEl(n)?.classList.remove('down');
+  if (arp.mode !== 'off') { if (!arp.hold) arp.notes.delete(n); } else voiceOff(n);
+}
+
+// sound: poly = one voice per key; mono = one voice that glides between keys (last key pressed wins, letting go goes back)
+const voices = new Map(), mono = { v: null, n: null, stack: [] };
+function voiceOn(n, v) {
+  if (M.synth.mono !== 'mono') { voices.set(n, play(n, v)); return; }
+  mono.stack = mono.stack.filter(x => x !== n).concat(n);
+  if (mono.v) { const t = ensureAudio(); lastHz = mtof(noteMidi(n)); mono.v.glide(lastHz, t, M.synth.glide); } else mono.v = play(n, v);
+  mono.n = n;
+}
+function voiceOff(n) {
+  const vc = voices.get(n); if (vc) { vc.release(ctx.currentTime); voices.delete(n); return; }
+  mono.stack = mono.stack.filter(x => x !== n);
+  if (!mono.v || n !== mono.n) return;
+  if (mono.stack.length) { const back = mono.stack[mono.stack.length - 1]; lastHz = mtof(noteMidi(back)); mono.v.glide(lastHz, ctx.currentTime, M.synth.glide); mono.n = back; }
+  else { mono.v.release(ctx.currentTime); mono.v = mono.n = null; }
+}
+
+// arpeggiator: plays the held notes one at a time in time with the song's tempo
+const ARP_KEY = 'sidechain-arp';
+const arp = Object.assign({ mode: 'off', rate: 4, oct: 1, hold: false }, (() => { try { return JSON.parse(localStorage.getItem(ARP_KEY)) || {}; } catch (e) { return {}; } })());
+arp.notes = new Map(); arp.i = 0; arp.timer = null; arp.next = 0; arp.last = null;
+const saveArp = () => { try { localStorage.setItem(ARP_KEY, JSON.stringify({ mode: arp.mode, rate: arp.rate, oct: arp.oct, hold: arp.hold })); } catch (e) {} };
+function arpSeq() {
+  const ns = [...arp.notes.keys()].sort((a, b) => a - b), up = [];
+  for (let o = 0; o < arp.oct; o++) ns.forEach(n => up.push(n + 12 * o));
+  if (arp.mode === 'down') return up.reverse();
+  if (arp.mode === 'updown') return up.length > 2 ? up.concat(up.slice(1, -1).reverse()) : up;
+  return up;
+}
+function arpStart() {
+  if (arp.timer) return;
+  arp.i = 0; arp.next = ensureAudio() + 0.02; arp.last = null;
+  arp.timer = setInterval(arpTick, 25); arpTick();
+}
+function arpStop() { clearInterval(arp.timer); arp.timer = null; if (arp.last) arp.last.v.release(ctx.currentTime); arp.last = null; }
+function arpTick() {
+  if (!arp.notes.size) return arpStop();
+  const step = 60 / (M.bpm || 120) / arp.rate;
+  while (arp.next < ctx.currentTime + 0.12) {
+    const seq = arpSeq(), n = arp.mode === 'random' ? seq[Math.floor(Math.random() * seq.length)] : seq[arp.i++ % seq.length];
+    const t = arp.next, f = mtof(noteMidi(n)), v = arp.notes.get(n) ?? 0.9, L = arp.last;
+    lastHz = f;
+    if (M.synth.mono === 'mono' && L && L.end >= t - 0.01) { L.v.glide(f, t, M.synth.glide); L.v.release(t + step); L.end = t + step; }
+    else { const vc = startLead(ctx, leadOut, M.synth, t, f, v); vc.release(t + step * (M.synth.mono === 'mono' ? 1 : 0.7)); arp.last = { v: vc, end: t + step }; }
+    arp.next += step;
+  }
+}
+function renderArp() {
+  $('#arpMode').value = arp.mode; $('#arpRate').value = arp.rate; $('#arpOct').value = arp.oct;
+  $('#arpHold').classList.toggle('on', arp.hold); $('#arpHold').setAttribute('aria-pressed', arp.hold);
+  $('#arpOpts').hidden = arp.mode === 'off';
+}
+$('#arpMode').onchange = e => {
+  const was = arp.mode; arp.mode = e.target.value; saveArp(); renderArp();
+  if (arp.mode === 'off') { arp.notes.clear(); arpStop(); [...held.entries()].forEach(([n, v]) => voiceOn(n, v)); }
+  else if (was === 'off') { [...held.keys()].forEach(voiceOff); held.forEach((v, n) => arp.notes.set(n, v)); if (arp.notes.size) arpStart(); }
+};
+$('#arpRate').onchange = e => { arp.rate = +e.target.value; saveArp(); };
+$('#arpOct').onchange = e => { arp.oct = +e.target.value; saveArp(); };
+$('#arpHold').onclick = () => { arp.hold = !arp.hold; saveArp(); renderArp(); if (!arp.hold) [...arp.notes.keys()].forEach(n => { if (!held.has(n)) arp.notes.delete(n); }); };
+renderArp();
 const base = () => 12 * (kbOct + 1);
 const keyEl = n => $(`#kb [data-n="${n}"]`);
 function renderKeys() {
@@ -76,10 +145,11 @@ $('#octUp').onclick = () => { kbOct = Math.min(6, kbOct + 1); try { localStorage
 const pointers = new Map();   // pointerId -> note
 const kb = $('#kb');
 const keyAt = (x, y) => { const el = document.elementFromPoint(x, y); return el && el.closest('#kb .key') ? +el.closest('.key').dataset.n : null; };
-kb.addEventListener('pointerdown', e => { const n = keyAt(e.clientX, e.clientY); if (n == null) return; e.preventDefault(); kb.setPointerCapture(e.pointerId); pointers.set(e.pointerId, n); noteOn(n); });
+const velAt = (n, y) => { const r = keyEl(n)?.getBoundingClientRect(); return r ? Math.max(0.3, Math.min(1, 0.3 + 0.7 * (y - r.top) / r.height)) : 0.9; };   // tap near the front edge = harder
+kb.addEventListener('pointerdown', e => { const n = keyAt(e.clientX, e.clientY); if (n == null) return; e.preventDefault(); kb.setPointerCapture(e.pointerId); pointers.set(e.pointerId, n); noteOn(n, velAt(n, e.clientY)); });
 kb.addEventListener('pointermove', e => {
   if (!pointers.has(e.pointerId)) return; const n = keyAt(e.clientX, e.clientY), cur = pointers.get(e.pointerId);
-  if (n !== cur) { if (cur != null) noteOff(cur); if (n != null) noteOn(n); pointers.set(e.pointerId, n); }
+  if (n !== cur) { if (cur != null) noteOff(cur); if (n != null) noteOn(n, velAt(n, e.clientY)); pointers.set(e.pointerId, n); }
 });
 const lift = e => { const n = pointers.get(e.pointerId); if (n != null) noteOff(n); pointers.delete(e.pointerId); };
 ['pointerup', 'pointercancel'].forEach(t => kb.addEventListener(t, lift));
@@ -92,7 +162,7 @@ document.addEventListener('keydown', e => {
   if (i >= 0) { e.preventDefault(); noteOn(base() + i); }
 });
 document.addEventListener('keyup', e => { const i = COMPUTER.indexOf(e.key.toLowerCase()); if (i >= 0) noteOff(base() + i); });
-window.addEventListener('blur', () => [...held.keys()].forEach(noteOff));
+window.addEventListener('blur', () => { [...held.keys()].forEach(noteOff); if (!arp.hold) { arp.notes.clear(); arpStop(); } });
 
 // MIDI keyboard (Chrome, Edge, Android). Asks for permission only when the button is pressed.
 $('#midiBtn').onclick = async () => {

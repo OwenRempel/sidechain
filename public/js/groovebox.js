@@ -163,10 +163,14 @@ function bass(t,f,dur,v,w){
   lp.connect(g);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v*.42,t+.005);g.gain.setValueAtTime(v*.42,t+dur);g.gain.linearRampToValueAtTime(0,t+dur+.05);
   g.connect(musicBus);
 }
-// Lead voice built from S.synth (see synth.js): unison osc + layer osc, FM bell, filter + envelope, amp ADSR, LFO.
 // Lead notes come from leadvoice.js, built from S.synth (the Lead synth panel).
-let lastLeadF=440;
-function lead(t,f,dur,v){lastLeadF=f;startLead(ctx,leadOut,S.synth,t,f,v).release(t+dur)}
+// Mono mode: a note that starts as the last one ends (or overlaps it) glides on from it instead of restarting.
+let lastLeadF=440,monoLead=null;
+function lead(t,f,dur,v){
+  lastLeadF=f;const p=S.synth;
+  if(p.mono==='mono'&&monoLead&&monoLead.p===p&&monoLead.end>t-.06&&monoLead.start<t){monoLead.v.glide(f,t,p.glide);monoLead.v.release(t+dur);monoLead.end=t+dur;return}
+  const v1=startLead(ctx,leadOut,p,t,f,v);v1.release(t+dur);monoLead=p.mono==='mono'?{v:v1,p,start:t,end:t+dur}:null;
+}
 function pad(t,freqs,dur){
   const g=ctx.createGain(),lp=ctx.createBiquadFilter(),a=dur<.4?.01:Math.min(.35,dur*.25),end=t+dur+.7;lp.frequency.value=S.sound.padCut;
   freqs.forEach(f=>[-9,9].forEach(dt=>{const o=ctx.createOscillator();o.type='sawtooth';o.frequency.value=f;o.detune.value=dt;o.connect(lp);o.start(t);o.stop(end)}));

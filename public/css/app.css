@@ -139,4 +139,7 @@ body{margin:0}
 .key span{font-weight:600}
 @media (hover:none){.key kbd{display:none}}
 @media (max-width:480px){.kb{height:112px}}
-@media (max-width:480px){.dock-bar .tip{order:9;flex-basis:100%;font-size:.7rem}.dock{gap:6px;padding-top:6px}}
+.dock-bar select{width:auto;padding:4px 8px;font-size:.75rem}
+.dock-bar.arp label{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--dim)}
+.dock-bar.arp #arpOpts{display:flex;gap:6px;align-items:center}.dock-bar.arp #arpOpts[hidden]{display:none}
+@media (max-width:480px){.dock-bar .tip{order:9;flex-basis:100%;font-size:.7rem}.dock-bar.arp .tip{display:none}.dock{gap:6px;padding-top:6px}}

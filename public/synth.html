@@ -39,6 +39,13 @@
     <span class="tip" id="inKey"></span>
     <button class="btn sm" id="midiBtn" title="Play with a USB or Bluetooth MIDI keyboard">MIDI keyboard</button>
   </div>
+  <div class="dock-bar arp">
+    <label>Arp <select id="arpMode" aria-label="Arpeggiator"><option value="off">Off</option><option value="up">Up</option><option value="down">Down</option><option value="updown">Up &amp; down</option><option value="random">Random</option></select></label>
+    <span id="arpOpts"><select id="arpRate" aria-label="Arp speed"><option value="2">1/8</option><option value="4">1/16</option><option value="3">1/8 triplet</option></select>
+    <select id="arpOct" aria-label="Arp octaves"><option value="1">1 oct</option><option value="2">2 oct</option><option value="3">3 oct</option></select>
+    <button class="btn sm" id="arpHold" aria-pressed="false" title="Keep playing after you let go">Hold</button></span>
+    <span class="tip">Hold a chord and the arp plays its notes one by one, in time with your song.</span>
+  </div>
   <div class="kb" id="kb" aria-label="Keyboard"></div>
 </div>
 
