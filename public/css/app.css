@@ -149,3 +149,9 @@ body{margin:0}
 .dock-bar #recMsg:not(:empty)~.tip{display:none}
 .seg.part{margin:2px 0 6px}.seg.part button[aria-pressed="true"]{background:var(--c);border-color:var(--c)}
 .seg.samp select{width:auto;max-width:60%}.seg.samp small{flex-basis:100%;color:var(--dim);font-size:.7rem;line-height:1.4}
+.seg.pats{margin:10px 0 6px}.seg.pats button{min-width:2.4em;font-weight:700}
+.seg.pats button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.seg.pats button.empty{border-style:dashed;opacity:.6}
+.seg.pats small{flex-basis:100%;color:var(--dim);font-size:.7rem}
+.sec .field{flex-wrap:wrap;gap:6px}.sec .field select{width:auto}
+#arrAdd{width:auto;margin-top:10px}

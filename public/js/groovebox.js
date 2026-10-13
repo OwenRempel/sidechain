@@ -86,12 +86,19 @@ function partSounds(st,keep){
 function fresh(style,key,keepSynth){
   const st=STYLES[style],synth=partSounds(st,keepSynth);
   return {style,key:key??pick([0,2,5,7,9,4]),scale:pick(st.scales),prog:pick(st.progs).slice(),bpm:st.bpm,swing:st.swing,cutoff:1,wobble:st.wobble,
-    space:st.space,echo:st.echo,vol:.8,vary:S?.vary??.5,arrange:S?.arrange||false,sections:S?.sections||defaultSections(),sound:{...st.sound},...synth,pat:st.gen(),mute:S?.mute||{}};
+    space:st.space,echo:st.echo,vol:.8,vary:S?.vary??.5,arrange:S?.arrange||false,sections:S?.sections||defaultSections(),sound:{...st.sound},...synth,mute:S?.mute||{},
+    // patterns A-D: A for the intro and build, B (a second take of the style) for the drop; C and D start empty
+    ...(()=>{const pats=[st.gen(),st.gen(),null,null];return{pats,edit:0,pat:pats[0]}})()};
 }
 try{const s=JSON.parse(localStorage.getItem('sidechain-v1'));if(s&&s.pat&&STYLES[s.style])S=s}catch(e){}
 if(!S)S=fresh('futurebass',0);
 if(!S.sections)S.sections=defaultSections();
 // songs saved before the Pad track and drum variation
+// songs saved before patterns A-D: their one pattern becomes A. S.pat is always the pattern being edited (S.pats[S.edit]).
+if(!Array.isArray(S.pats)){S.pats=[S.pat,null,null,null];S.edit=0}
+S.edit=Math.max(0,Math.min(3,S.edit|0));S.pats[S.edit]=S.pat;
+S.sections.forEach(x=>{if(x.pat==null)x.pat=0});
+S.pats.forEach(p=>{if(p&&!p.wash)p.wash=at(D16(),[0])});
 if(!S.pat.wash){S.pat.wash=at(D16(),[0]);S.sections.forEach(x=>{if(x.tracks.includes('pad')&&!x.tracks.includes('wash'))x.tracks.push('wash')})}
 if(S.vary==null)S.vary=.5;
 Synth.PARTS.forEach(({id,keys:[k,kid]})=>{if(!S[k]){S[kid]=styleSound(STYLES[S.style],id);S[k]=presetSynth(S[kid])}else S[k]=Synth.normalize(S[k])});
@@ -196,7 +203,7 @@ function cutoffAt(bar,st){const c=cutHz(),s=S.arrange&&section(bar);if(!s)return
 
 let playing=false,step=0,bar=0,nextT=0,timer=null;const q=[];
 function scheduleStep(st,t,bar){
-  const P=S.pat,sec=S.arrange?section(bar):null,on=id=>!S.mute[id]&&(!sec||sec.set.has(id));
+  const sec=S.arrange?section(bar):null,P=(sec&&S.pats[sec.pat])||S.pat,on=id=>!S.mute[id]&&(!sec||sec.set.has(id));
   const sd=60/S.bpm/4,r=S.prog[bar%S.prog.length];
   masterFilter.frequency.setTargetAtTime(cutoffAt(bar,st),t,.03);
   // Variation: fills on the last bar of each 4-bar phrase (or of each section), a crash after, ghost notes in between
@@ -209,7 +216,7 @@ function scheduleStep(st,t,bar){
   const l=P.lead[st];if(l&&on('lead'))lead(t,mtof(leadNote(r+l.d)),l.len*sd*.9,l.v);
   if(P.pad[st]&&on('pad')){let nx=st+1;while(nx<16&&!P.pad[nx])nx++;pad(t,chordFreqs(r),(nx-st)*sd*.97)}
   if(P.wash[st]&&on('wash')){let nx=st+1;while(nx<16&&!P.wash[nx])nx++;wash(t,washFreqs(r),(nx-st)*sd)}
-  q.push({st,bar,t,sec:sec?.name});
+  q.push({st,bar,t,sec:sec?`${sec.name} · ${'ABCD'[S.pats[sec.pat]?sec.pat:S.edit]}`:null});
 }
 function tick(){
   while(nextT<ctx.currentTime+.12){
@@ -291,7 +298,11 @@ function editNote(a,val){
 /* arrangement panel: bars per section and which tracks play in each */
 function renderArr(){
   $('#arrRows').innerHTML=S.sections.map((s,k)=>`<div class="sec" data-k="${k}">
-    <div class="field"><span class="sec-n">${s.name}</span><select data-k="${k}" aria-label="${s.name} length">${[0,1,2,4,8,16].map(b=>`<option value="${b}"${b===s.bars?' selected':''}>${b} bar${b===1?'':'s'}</option>`).join('')}</select></div>
+    <div class="field"><span class="sec-n">${k+1}. ${s.name}</span>
+      <select data-k="${k}" data-f="pat" aria-label="${s.name} pattern">${[0,1,2,3].map(i=>`<option value="${i}"${i===s.pat?' selected':''}>Pattern ${'ABCD'[i]}${S.pats[i]?'':' (empty)'}</option>`).join('')}</select>
+      <select data-k="${k}" data-f="bars" aria-label="${s.name} length">${[0,1,2,4,8,12,16,24,32].map(b=>`<option value="${b}"${b===s.bars?' selected':''}>× ${b} bar${b===1?'':'s'}</option>`).join('')}</select>
+      <button class="pm" data-k="${k}" data-mv="-1" aria-label="Move ${s.name} earlier"${k?'':' disabled'}>↑</button>
+      <button class="pm" data-k="${k}" data-del aria-label="Remove ${s.name}">×</button></div>
     <div class="sec-t">${TRACKS.map(t=>`<button class="tchip" style="--c:var(--${t.id})" data-k="${k}" data-t="${t.id}" aria-pressed="${s.tracks.includes(t.id)}">${t.name}</button>`).join('')}</div></div>`).join('');
 }
 
@@ -350,7 +361,7 @@ window.addEventListener('storage',e=>{
     ['lead','bass'].forEach(id=>{if(n.pat&&n.pat[id]&&JSON.stringify(n.pat[id])!==JSON.stringify(S.pat[id])){S.pat[id]=n.pat[id];sel=null;renderTrack(id);renderEditor()}})}catch(err){}
 });
 
-function renderEverything(){renderAll();renderProg();renderEditor();renderArr();renderSynth();syncMacros();syncTop();applyAudio();save()}
+function renderEverything(){renderPats();renderAll();renderProg();renderEditor();renderArr();renderSynth();syncMacros();syncTop();applyAudio();save()}
 
 $('#key').innerHTML=NOTE.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
 $('#scale').innerHTML=Object.keys(SCALES).map(s=>`<option>${s}</option>`).join('');
@@ -367,9 +378,23 @@ $('#prog').onclick=e=>{const b=e.target.closest('.pm');if(!b)return;
   if(+b.dataset.n>0)S.prog.push(S.prog[S.prog.length-1]);else S.prog.pop();renderProg();save()};
 $('#noteEd').onclick=e=>{const b=e.target.closest('button[data-a]');if(b&&sel)editNote(b.dataset.a,+b.dataset.n||0)};
 $('#noteEd').onchange=e=>{if(e.target.dataset.a==='w'&&sel)editNote('w',+e.target.value)};
-$('#arrRows').onchange=e=>{const k=e.target.dataset.k;if(k==null)return;S.sections[k].bars=+e.target.value;if(playing)bar=0;syncTop();save()};
-$('#arrRows').onclick=e=>{const b=e.target.closest('.tchip');if(!b)return;const s=S.sections[b.dataset.k],t=b.dataset.t;
+$('#arrRows').onchange=e=>{const k=e.target.dataset.k,f=e.target.dataset.f;if(k==null||!f)return;S.sections[k][f]=+e.target.value;
+  if(f==='pat'&&!S.pats[S.sections[k].pat]){S.pats[S.sections[k].pat]=JSON.parse(JSON.stringify(S.pat));renderPats();renderArr()}
+  if(playing)bar=0;syncTop();save()};
+$('#arrRows').onclick=e=>{
+  const x=e.target.closest('[data-del],[data-mv]');
+  if(x){const k=+x.dataset.k;if(x.dataset.del!==undefined)S.sections.splice(k,1);else if(k>0)[S.sections[k-1],S.sections[k]]=[S.sections[k],S.sections[k-1]];
+    renderArr();if(playing)bar=0;syncTop();save();return}
+  const b=e.target.closest('.tchip');if(!b)return;const s=S.sections[b.dataset.k],t=b.dataset.t;
   s.tracks=s.tracks.includes(t)?s.tracks.filter(x=>x!==t):[...s.tracks,t];b.setAttribute('aria-pressed',s.tracks.includes(t));save()};
+$('#arrAdd').innerHTML='<option value="">+ Add section…</option>'+Theory.SECTION_TYPES.map(t=>`<option>${t.name}</option>`).join('');
+$('#arrAdd').onchange=e=>{const t=Theory.SECTION_TYPES.find(x=>x.name===e.target.value);e.target.value='';if(!t)return;
+  S.sections.push({name:t.name,bars:4,pat:t.name==='Drop'&&S.pats[1]?1:S.edit,tracks:[...t.tracks],...(t.dark?{dark:true}:{}),...(t.build?{build:true}:{})});renderArr();syncTop();save()};
+/* patterns A-D: the grid edits one; the arrangement picks one per section */
+function renderPats(){$('#pats').innerHTML='<span class="lbl">Pattern</span>'+[0,1,2,3].map(i=>`<button data-p="${i}" aria-pressed="${i===S.edit}"${S.pats[i]?'':' class="empty"'}>${'ABCD'[i]}</button>`).join('')+
+  `<small>${S.arrange?'Arrange plays each section\'s pattern. ':'Loop plays the pattern you are editing. '}An empty one starts as a copy of the one you are on.</small>`}
+$('#pats').onclick=e=>{const b=e.target.closest('[data-p]');if(!b)return;const i=+b.dataset.p;
+  if(!S.pats[i])S.pats[i]=JSON.parse(JSON.stringify(S.pat));S.edit=i;S.pat=S.pats[i];sel=null;renderPats();renderAll();renderEditor();renderArr();save()};
 $('#arrReset').onclick=()=>{S.sections=defaultSections();renderArr();syncTop();save()};
 $('#key').onchange=e=>{S.key=+e.target.value;renderProg();renderEditor();save()};
 $('#scale').onchange=e=>{S.scale=e.target.value;renderProg();renderEditor();save()};

@@ -160,9 +160,18 @@ const Theory = (() => {
 
   // Arrangement: sections play in order, then loop. Each lists its length in bars and which tracks play.
   const ARRANGEMENT = [
-    { name: 'Intro', bars: 4, tracks: ['kick', 'hat', 'ohat', 'pad', 'wash'], dark: true },
-    { name: 'Build', bars: 4, tracks: ['kick', 'clap', 'hat', 'ohat', 'bass', 'pad', 'wash'], build: true },
-    { name: 'Drop', bars: 8, tracks: ['kick', 'clap', 'hat', 'ohat', 'bass', 'lead', 'pad', 'wash'] },
+    { name: 'Intro', bars: 4, pat: 0, tracks: ['kick', 'hat', 'ohat', 'pad', 'wash'], dark: true },
+    { name: 'Build', bars: 4, pat: 0, tracks: ['kick', 'clap', 'hat', 'ohat', 'bass', 'pad', 'wash'], build: true },
+    { name: 'Drop', bars: 8, pat: 1, tracks: ['kick', 'clap', 'hat', 'ohat', 'bass', 'lead', 'pad', 'wash'] },
+  ];
+  // Kinds of section you can add. dark = filter kept low, build = filter sweeps open and ends on a snare roll.
+  const SECTION_TYPES = [
+    { name: 'Intro', dark: true, tracks: ['kick', 'hat', 'pad', 'wash'] },
+    { name: 'Verse', tracks: ['kick', 'clap', 'hat', 'bass', 'pad', 'wash'] },
+    { name: 'Build', build: true, tracks: ['kick', 'clap', 'hat', 'ohat', 'bass', 'pad', 'wash'] },
+    { name: 'Drop', tracks: ['kick', 'clap', 'hat', 'ohat', 'bass', 'lead', 'pad', 'wash'] },
+    { name: 'Break', dark: true, tracks: ['lead', 'pad', 'wash'] },
+    { name: 'Outro', dark: true, tracks: ['kick', 'hat', 'wash'] },
   ];
   // Which section a bar falls in, and how far through it (b = bar within the section). null if every section is empty.
   function sectionAt(bar, secs) {
@@ -208,7 +217,7 @@ const Theory = (() => {
     return pat.map(x => x && { d: x.d, len: x.len, v: x.v });
   }
 
-  return { NOTE, SCALE, takeToPattern, varyDrums, QUAL, DEGREES, PROGRESSIONS, MOVES, INTERVALS, BEATS, JOBS, ARRANGEMENT, SHAPES, HOOKS, chordNotes, chordName, degreeChord, mtof, parseBeat, beatStats, sectionAt, degSemi, noteRole };
+  return { NOTE, SCALE, takeToPattern, varyDrums, SECTION_TYPES, QUAL, DEGREES, PROGRESSIONS, MOVES, INTERVALS, BEATS, JOBS, ARRANGEMENT, SHAPES, HOOKS, chordNotes, chordName, degreeChord, mtof, parseBeat, beatStats, sectionAt, degSemi, noteRole };
 })();
 
 if (typeof module !== 'undefined') module.exports = Theory; // lets node --test require it; browsers ignore this
