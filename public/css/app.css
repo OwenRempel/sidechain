@@ -72,3 +72,24 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:4px;bac
 .nav a{color:var(--dim);text-decoration:none;padding:6px 10px;border:1px solid var(--line);border-radius:999px}
 .nav a[aria-current="page"]{color:var(--bg);background:var(--ink);border-color:var(--ink)}
 body{margin:0}
+/* chord pickers, note editor, arrangement panel */
+.prog{flex-wrap:wrap;align-items:center}
+.prog select.now{background:var(--pad);color:#120b26;border-color:var(--pad)}
+.pm{width:30px;height:30px;padding:0;background:var(--panel2);border:1px solid var(--line);border-radius:5px;font-family:var(--mono);font-size:1rem}
+.pm:disabled,.btn:disabled{opacity:.35;cursor:default}
+.btn.sm{padding:6px 10px;font-size:.72rem}
+.btn.sm[aria-pressed="true"]{border-color:var(--c,var(--ink));color:var(--c,var(--ink))}
+.cell.sel{outline:2px solid var(--ink);outline-offset:-2px}
+.noteed[hidden]{display:none}
+.noteed{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;border-left:3px solid var(--c)}
+.noteed .ed-t{width:100%;color:var(--c)}
+.noteed output{font-family:var(--mono);font-size:.85rem;min-width:5.5em;text-align:center}
+.noteed output small{display:block;font-size:.66rem;color:var(--dim)}
+.arr{display:flex;flex-direction:column;gap:10px;transition:opacity .2s}
+.arr.off{opacity:.6}
+.arr>header{display:flex;justify-content:space-between;align-items:center}
+.sec{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid var(--line)}
+.sec-n{min-width:3.5em;font-weight:700;letter-spacing:.06em}
+.sec-t{display:flex;flex-wrap:wrap;gap:4px}
+.tchip{background:transparent;border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:.72rem;letter-spacing:.05em;color:var(--dim)}
+.tchip[aria-pressed="true"]{background:var(--c);border-color:var(--c);color:var(--bg)}

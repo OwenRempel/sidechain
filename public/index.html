@@ -31,11 +31,20 @@
 
   <div class="panel grid" id="grid"></div>
 
+  <div class="panel noteed" id="noteEd" hidden></div>
+
   <div class="panel macros" id="macros"></div>
 
-  <p class="tip">Tap a step to toggle it (drum steps cycle loud → soft → off). Tap a track name to mute it, ⟳ to reroll just that part. Arrange plays a 16-bar intro → build → drop. On iPhone, flip the ring/silent switch off if you hear nothing.</p>
+  <section class="panel arr" id="arr" aria-labelledby="arrH">
+    <header><span class="lbl" id="arrH">Arrangement</span><button class="btn sm" id="arrReset">Reset</button></header>
+    <p class="tip">Plays when Arrange is on. Pick how long each section lasts and which tracks play in it. Intro keeps the filter dark, Build sweeps it open and ends on a snare roll.</p>
+    <div id="arrRows"></div>
+  </section>
+
+  <p class="tip">Tap a drum step to cycle it loud → soft → off. Tap a bass or lead step to add a note and open the note editor (pitch, length, level); tap a selected note again to delete it. Change any chord from its dropdown, and use − / + to set how many bars the progression has. Tap a track name to mute it, ⟳ to reroll just that part. Arrange plays the sections set in the Arrangement panel. On iPhone, flip the ring/silent switch off if you hear nothing.</p>
 </div>
 
+<script src="js/theory.js"></script>
 <script src="js/midi.js"></script>
 <script src="js/groovebox.js"></script>
 </body></html>

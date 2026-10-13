@@ -112,7 +112,20 @@ const Theory = (() => {
     const kickSnare = [...all[0], ...all[1]].map((v, i) => (v && (i % 16) % 4 !== 0 ? 1 : 0));
     return { busy: Math.min(1, hits / 28), sync: Math.min(1, kickSnare.reduce((a, b) => a + b, 0) / 4), drive: Math.min(1, all[0].filter(Boolean).length / 4) };
   }
-  return { NOTE, SCALE, QUAL, DEGREES, PROGRESSIONS, MOVES, INTERVALS, BEATS, JOBS, chordNotes, chordName, degreeChord, mtof, parseBeat, beatStats };
+  // Arrangement: sections play in order, then loop. Each lists its length in bars and which tracks play.
+  const ARRANGEMENT = [
+    { name: 'Intro', bars: 4, tracks: ['kick', 'hat', 'ohat', 'pad'], dark: true },
+    { name: 'Build', bars: 4, tracks: ['kick', 'clap', 'hat', 'ohat', 'bass', 'pad'], build: true },
+    { name: 'Drop', bars: 8, tracks: ['kick', 'clap', 'hat', 'ohat', 'bass', 'lead', 'pad'] },
+  ];
+  // Which section a bar falls in, and how far through it (b = bar within the section). null if every section is empty.
+  function sectionAt(bar, secs) {
+    const total = secs.reduce((a, s) => a + s.bars, 0);
+    if (!total) return null;
+    let b = bar % total;
+    for (const s of secs) { if (b < s.bars) return { ...s, b }; b -= s.bars; }
+  }
+  return { NOTE, SCALE, QUAL, DEGREES, PROGRESSIONS, MOVES, INTERVALS, BEATS, JOBS, ARRANGEMENT, chordNotes, chordName, degreeChord, mtof, parseBeat, beatStats, sectionAt };
 })();
 
 if (typeof module !== 'undefined') module.exports = Theory; // lets node --test require it; browsers ignore this

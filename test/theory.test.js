@@ -47,3 +47,12 @@ test('beats are 16 steps and stats stay in 0..1', () => {
   }
   assert.deepEqual(T.parseBeat('x.o.'), [1, 0, 0.5, 0]);
 });
+
+test('sectionAt walks the arrangement and loops', () => {
+  const A = T.ARRANGEMENT;
+  assert.deepEqual([0, 3, 4, 7, 8, 15, 16].map(b => T.sectionAt(b, A).name), ['Intro', 'Intro', 'Build', 'Build', 'Drop', 'Drop', 'Intro']);
+  assert.equal(T.sectionAt(6, A).b, 2);
+  const noIntro = A.map(s => ({ ...s, bars: s.name === 'Intro' ? 0 : s.bars }));
+  assert.equal(T.sectionAt(0, noIntro).name, 'Build');
+  assert.equal(T.sectionAt(0, A.map(s => ({ ...s, bars: 0 }))), null);
+});
