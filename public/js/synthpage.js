@@ -8,7 +8,7 @@ const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
 const readSong = () => { try { return JSON.parse(localStorage.getItem(SONG)) || {}; } catch (e) { return {}; } };
 
 const M = readSong();
-const DEFAULT = { lead: 'chime', bass: 'fbbass', pad: 'fbchords' };
+const DEFAULT = { lead: 'chime', bass: 'fbbass', pad: 'fbchords', wash: 'shimmer' };
 Synth.PARTS.forEach(({ id, keys: [k, kid] }) => { M[k] = M[k] ? Synth.normalize(M[k]) : Synth.normalize(Synth.byId(M[kid] = DEFAULT[id]).p); });
 // which sound the page edits and plays: lead, bass or chords (shared with the Groovebox panel)
 const PART_KEY = 'sidechain-synth-part';
@@ -38,17 +38,18 @@ const noteMidi = n => n + 12 * cur().oct;
 function play(n, v = 1) { const t = ensureAudio(), f = mtof(noteMidi(n)); lastHz = f; return startLead(ctx, leadOut, cur(), t, f, v); }
 // where each part sits, as in the Groovebox: bass two octaves under the chords, the lead's home a 5th-ish above them
 const bassBase = () => 36 + (M.key >= 7 ? M.key - 12 : M.key);
-const home = () => (part === 'bass' ? bassBase() : part === 'pad' ? bassBase() + 24 : 60 + M.key);
+const home = () => (part === 'bass' ? bassBase() : part === 'pad' ? bassBase() + 24 : part === 'wash' ? bassBase() + 12 : 60 + M.key);
+const chordPart = () => part === 'pad' || part === 'wash';
 const degNote = (b, d) => { const sc = SCALES[M.scale]; return b + sc[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7); };
 const firstChord = () => (M.prog && M.prog.length ? M.prog[0] : 0);
-const chord = (t, r, dur) => [0, 2, 4].forEach(k => { const f = mtof(noteMidi(degNote(bassBase() + 24, r + k))); lastHz = f; startLead(ctx, leadOut, cur(), t, f, 1).release(t + dur); });
+const chord = (t, r, dur) => (part === 'wash' ? [0, 4, 7, 9] : [0, 2, 4]).forEach(k => { const f = mtof(noteMidi(degNote(home(), r + k))); lastHz = f; startLead(ctx, leadOut, cur(), t, f, 1).release(t + dur); });
 function audition() {
-  if (part === 'pad') return chord(ensureAudio(), firstChord(), 0.6);
+  if (chordPart()) return chord(ensureAudio(), firstChord(), part === 'wash' ? 1.2 : 0.6);
   play(home(), 1).release(ctx.currentTime + (part === 'bass' ? 0.4 : 0.32));
 }
 function tryPhrase() {
   const s = 60 / (M.bpm || 120) / 4, t0 = ensureAudio(), prog = M.prog && M.prog.length ? M.prog : [0];
-  if (part === 'pad') return prog.forEach((r, b) => chord(t0 + b * s * 8, r, s * 7.5));
+  if (chordPart()) return prog.forEach((r, b) => chord(t0 + b * s * 8, r, s * 7.5));
   const line = part === 'bass' ? prog.flatMap((r, b) => [[0, 0, 3], [3, 7, 1], [6, 0, 2], [10, 0, 2], [12, 4, 3]].map(([st, d, len]) => [r + d, b * 8 + st / 2, len / 2]))
     : [[0, 0, 2], [2, 2, 1], [4, 3, 1], [7, 4, 2], [4, 6, 2], [2, 8, 1], [0, 9, 5]].map(([d, st, len]) => [d, st * 1.5, len * 1.4]);
   line.forEach(([d, st, len], i) => {
@@ -70,7 +71,7 @@ panel.render();
 (function frame() { requestAnimationFrame(frame); panel.tick(); })();
 
 /* keyboard: two octaves, notes in the song's key marked, played by touch, mouse, computer keys or a MIDI keyboard */
-const KB_DEFAULT = { lead: 4, bass: 2, pad: 3 };
+const KB_DEFAULT = { lead: 4, bass: 2, pad: 3, wash: 3 };
 const loadOct = () => { try { return +localStorage.getItem(OCT_KEY + (part === 'lead' ? '' : '-' + part)) || KB_DEFAULT[part]; } catch (e) { return KB_DEFAULT[part]; } };
 const saveOct = () => { try { localStorage.setItem(OCT_KEY + (part === 'lead' ? '' : '-' + part), kbOct); } catch (e) {} };
 let kbOct = loadOct();
@@ -254,7 +255,7 @@ function recFinish() {
 }
 function recCancel() { cancelAnimationFrame(rec.timer); rec.state = 'idle'; rec.open.clear(); $('#recMsg').textContent = ''; renderRec(); }
 function renderRec() {
-  const b = $('#recBtn'); b.hidden = part === 'pad'; b.title = `Record one bar of what you play into the Groovebox ${part}`; b.classList.toggle('on', rec.state !== 'idle'); b.style.setProperty('--p', 0);
+  const b = $('#recBtn'); b.hidden = chordPart(); b.title = `Record one bar of what you play into the Groovebox ${part}`; b.classList.toggle('on', rec.state !== 'idle'); b.style.setProperty('--p', 0);
   b.textContent = rec.state === 'count' ? '1 2 3 4…' : rec.state === 'rec' ? '● Recording' : '● Record';
   $('#recUndo').hidden = rec.state !== 'idle' || !rec.undo;
   if (rec.state !== 'idle') $('#recMsg').textContent = rec.state === 'count' ? 'Get ready, one bar of clicks first.' : 'Play one bar now.';

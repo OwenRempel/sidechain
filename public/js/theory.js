@@ -160,9 +160,9 @@ const Theory = (() => {
 
   // Arrangement: sections play in order, then loop. Each lists its length in bars and which tracks play.
   const ARRANGEMENT = [
-    { name: 'Intro', bars: 4, tracks: ['kick', 'hat', 'ohat', 'pad'], dark: true },
-    { name: 'Build', bars: 4, tracks: ['kick', 'clap', 'hat', 'ohat', 'bass', 'pad'], build: true },
-    { name: 'Drop', bars: 8, tracks: ['kick', 'clap', 'hat', 'ohat', 'bass', 'lead', 'pad'] },
+    { name: 'Intro', bars: 4, tracks: ['kick', 'hat', 'ohat', 'pad', 'wash'], dark: true },
+    { name: 'Build', bars: 4, tracks: ['kick', 'clap', 'hat', 'ohat', 'bass', 'pad', 'wash'], build: true },
+    { name: 'Drop', bars: 8, tracks: ['kick', 'clap', 'hat', 'ohat', 'bass', 'lead', 'pad', 'wash'] },
   ];
   // Which section a bar falls in, and how far through it (b = bar within the section). null if every section is empty.
   function sectionAt(bar, secs) {
@@ -171,6 +171,29 @@ const Theory = (() => {
     let b = bar % total;
     for (const s of secs) { if (b < s.bars) return { ...s, b }; b -= s.bars; }
   }
+  // Drum variation: what each drum plays on step st of bar `bar`, starting from the 16-step pattern P and changed by `amt` (0-1).
+  // A real drummer rarely plays the same bar twice: hats breathe, ghost notes creep in, and the last bar of every phrase
+  // (fill = true, normally every 4th bar) ends in a fill that leads into a crash on the next bar's first beat.
+  // Random choices are seeded by bar and step, so a bar always varies the same way. Returns { kick, clap, hat, ohat }.
+  const seeded = (bar, st, salt) => { const x = Math.sin(bar * 127.1 + st * 311.7 + salt * 74.7) * 43758.5453; return x - Math.floor(x); };
+  function varyDrums(P, st, bar, amt, { fill = bar % 4 === 3, after = bar > 0 && bar % 4 === 0 } = {}) {
+    const out = { kick: P.kick[st] || 0, clap: P.clap[st] || 0, hat: P.hat[st] || 0, ohat: P.ohat[st] || 0 };
+    if (!(amt > 0)) return out;
+    const r = salt => seeded(bar, st, salt);
+    if (out.hat) out.hat *= 1 - amt * 0.35 * r(1);                                   // hats breathe: no two hits quite the same
+    else if (st % 2 && r(2) < amt * 0.25) out.hat = 0.22;                            // the odd ghost hat in the gaps
+    if (!out.clap && [7, 10, 15].includes(st) && r(3) < amt * 0.18) out.clap = 0.22;  // ghost snares
+    if (bar % 2 && !out.kick && [10, 14].includes(st) && r(4) < amt * 0.3) out.kick = 0.7;   // a pushed kick every other bar
+    if (after && st === 0 && amt > 0.15) out.ohat = 1;                                // crash after a fill
+    const from = amt > 0.5 ? 12 : 14;                                                 // more variation = longer fill
+    if (fill && st >= from) {
+      out.hat = 0; out.ohat = 0;
+      out.clap = r(5) < 0.35 + amt * 0.65 ? 0.45 + 0.55 * (st - from + 1) / (16 - from) : 0;   // snare roll, getting louder
+      out.kick = st === from || (st === 15 - (bar % 8 === 7 ? 0 : 1) && r(6) < amt) ? 0.85 : 0;
+    }
+    return out;
+  }
+
   // A recorded take -> a 16-step lead pattern. notes: [{n (MIDI), v, t, end}] in seconds; t0 = start of the bar, step = one 16th.
   // sc: the scale's 7 semitone offsets, base: MIDI note of degree 0, root: the chord's degree. Notes snap to the grid and to the key;
   // `d` comes out relative to the chord root, like the Groovebox lead. One note per step (the highest wins), lengths stop at the next note.
@@ -185,7 +208,7 @@ const Theory = (() => {
     return pat.map(x => x && { d: x.d, len: x.len, v: x.v });
   }
 
-  return { NOTE, SCALE, takeToPattern, QUAL, DEGREES, PROGRESSIONS, MOVES, INTERVALS, BEATS, JOBS, ARRANGEMENT, SHAPES, HOOKS, chordNotes, chordName, degreeChord, mtof, parseBeat, beatStats, sectionAt, degSemi, noteRole };
+  return { NOTE, SCALE, takeToPattern, varyDrums, QUAL, DEGREES, PROGRESSIONS, MOVES, INTERVALS, BEATS, JOBS, ARRANGEMENT, SHAPES, HOOKS, chordNotes, chordName, degreeChord, mtof, parseBeat, beatStats, sectionAt, degSemi, noteRole };
 })();
 
 if (typeof module !== 'undefined') module.exports = Theory; // lets node --test require it; browsers ignore this

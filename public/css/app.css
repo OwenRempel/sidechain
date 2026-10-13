@@ -2,7 +2,7 @@
 /* Layout: one hardware panel — transport, style bank, step grid, macro faders — stacked for a phone */
 :root{
   --bg:#0d1014; --panel:#151a21; --panel2:#1c232c; --line:#2a333f; --ink:#e9eef4; --dim:#8a96a6;
-  --kick:#ff5d3d; --clap:#ffb21f; --hat:#d9e05a; --ohat:#86d96b; --bass:#2fc6d6; --lead:#ff55a5; --pad:#9d82ff;
+  --kick:#ff5d3d; --clap:#ffb21f; --hat:#d9e05a; --ohat:#86d96b; --bass:#2fc6d6; --lead:#ff55a5; --pad:#9d82ff; --wash:#6fa8ff;
   --display:"Chakra Petch", "Arial Narrow", system-ui, sans-serif;
   --mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
   color-scheme:dark;

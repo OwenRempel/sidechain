@@ -70,7 +70,8 @@ test('bass and chords parts: views, menus and presets', () => {
   assert.deepEqual(S.bassSynth, { c: 1 }); assert.equal(S.bassSynthId, 'subbass'); assert.deepEqual(S.synth, { a: 1 });
   assert.equal(Synth.part('nope').id, 'lead');
   assert.equal(Synth.catsFor('bass')[0][0], 'bass'); assert.equal(Synth.catsFor('pad')[0][0], 'chords');
-  assert.deepEqual(Synth.catsFor('lead').slice(-2).map(c => c[0]), ['bass', 'chords']);
+  assert.deepEqual(Synth.catsFor('lead').slice(-3).map(c => c[0]), ['bass', 'chords', 'pads']);
+  assert.equal(Synth.catsFor('wash')[0][0], 'pads');
   assert.equal(Synth.catsFor('lead').length, Synth.CATS.length);
   for (const c of ['bass', 'chords']) assert.ok(Synth.PRESETS.filter(p => p.cat === c).length >= 8, c);
   for (const p of Synth.PRESETS.filter(p => p.cat === 'bass')) assert.equal(p.p.width, 0, p.id + ' keeps the low end centred');

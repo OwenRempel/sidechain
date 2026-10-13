@@ -51,10 +51,10 @@ const Synth = (() => {
     { k: 'env', g: 'filter', label: 'Envelope', min: 0, max: 1, step: 0.01, fmt: pct },
     { k: 'drive', g: 'filter', label: 'Drive', min: 0, max: 1, step: 0.01, fmt: v => (v ? pct(v) : 'off') },
     { k: 'fdec', g: 'filter', label: 'Env decay', min: 0.02, max: 1.5, log: true, fmt: ms },
-    { k: 'att', g: 'amp', label: 'Attack', min: 0.002, max: 1, log: true, fmt: ms },
+    { k: 'att', g: 'amp', label: 'Attack', min: 0.002, max: 2, log: true, fmt: ms },
     { k: 'dec', g: 'amp', label: 'Decay', min: 0.02, max: 2, log: true, fmt: ms },
     { k: 'sus', g: 'amp', label: 'Sustain', min: 0, max: 1, step: 0.01, fmt: pct },
-    { k: 'rel', g: 'amp', label: 'Release', min: 0.02, max: 2, log: true, fmt: ms },
+    { k: 'rel', g: 'amp', label: 'Release', min: 0.02, max: 3, log: true, fmt: ms },
     { k: 'vol', g: 'amp', label: 'Level', min: 0, max: 1, step: 0.01, fmt: pct },
     { k: 'lfo', g: 'lfo', label: 'Target', type: 'choice', options: LFO_TARGETS },
     { k: 'lfoRate', g: 'lfo', label: 'Rate', min: 0.1, max: 12, log: true, fmt: v => v.toFixed(1) + ' Hz' },
@@ -131,13 +131,23 @@ const Synth = (() => {
     { id: 'dnbpad', cat: 'chords', name: 'Airy pad', who: 'Liquid drum & bass, chill', p: P({ wave: 'sawtooth', voices: 2, detune: 9, res: 1, env: 0, wave: 'triangle', cut: 2000, noise: 0.04, att: 0.3, dec: 1, sus: 1, rel: 0.6, chorus: 0.4, width: 0.7, vol: 0.8 }) },
     { id: 'organ', cat: 'chords', name: 'House organ', who: '90s house, gospel chords', p: P({ wave: 'sine', wave2: 'sine', osc2: 0.5, semi2: 12, fm: 0.1, ratio: 3, fmDecay: 0.1, cut: 6000, env: 0, att: 0.005, dec: 0.3, sus: 1, rel: 0.08, vol: 0.6 }) },
     { id: 'pianochords', cat: 'chords', name: 'Piano-ish chords', who: 'Matthew Parker, cinematic', p: P({ wave: 'triangle', wave2: 'sine', osc2: 0.3, semi2: 12, fm: 0.15, ratio: 1, fmDecay: 0.6, cut: 4000, env: 0.3, fdec: 0.5, att: 0.003, dec: 1.2, sus: 0.15, rel: 0.5, vol: 0.65 }) },
+
+    // Pads: slow, wide, long tails. The Groovebox plays them as an open chord under everything else.
+    { id: 'warmpad', cat: 'pads', name: 'Warm pad', who: 'House, synthwave, anything', p: P({ wave: 'sawtooth', voices: 3, detune: 12, cut: 900, res: 0.5, env: 0, att: 0.8, dec: 1, sus: 1, rel: 1.5, chorus: 0.5, width: 0.8, vol: 0.5 }) },
+    { id: 'airpad', cat: 'pads', name: 'Airy pad', who: 'Chill, liquid DnB, trance', p: P({ wave: 'triangle', voices: 3, detune: 10, noise: 0.08, cut: 3000, env: 0, att: 1, dec: 1, sus: 1, rel: 2, chorus: 0.6, width: 0.9, vol: 0.6 }) },
+    { id: 'choir', cat: 'pads', name: 'Choir "aah"', who: 'Cinematic, future bass', p: P({ wave: 'sawtooth', wave2: 'sawtooth', osc2: 0.3, semi2: 12, ftype: 'bandpass', cut: 1000, res: 2, env: 0, att: 0.6, dec: 1, sus: 1, rel: 1.5, lfo: 'pitch', lfoRate: 5, lfoDepth: 0.08, chorus: 0.6, width: 0.8, vol: 0.9 }) },
+    { id: 'strings', cat: 'pads', name: 'Cinematic strings', who: 'Matthew Parker, film scores', p: P({ wave: 'sawtooth', voices: 5, detune: 14, cut: 2200, res: 0.5, env: 0, att: 0.5, dec: 1, sus: 1, rel: 1.2, lfo: 'pitch', lfoRate: 5.5, lfoDepth: 0.06, width: 0.9, vol: 0.5 }) },
+    { id: 'darkdrone', cat: 'pads', name: 'Dark drone', who: 'Techno, dubstep intros', p: P({ wave: 'sawtooth', voices: 2, detune: 6, wave2: 'sine', osc2: 0.5, semi2: -12, cut: 400, res: 2, env: 0, att: 1.5, dec: 1, sus: 1, rel: 2.5, lfo: 'filter', lfoRate: 0.15, lfoDepth: 0.3, width: 0.6, vol: 0.7 }) },
+    { id: 'shimmer', cat: 'pads', name: 'Shimmer pad', who: 'Marshmello, future bass', p: P({ wave: 'sine', voices: 3, detune: 8, wave2: 'sine', osc2: 0.3, semi2: 19, fm: 0.15, ratio: 2, fmDecay: 2, cut: 8000, env: 0, att: 1, dec: 1, sus: 1, rel: 2, chorus: 0.7, width: 1, vol: 0.6 }) },
+    { id: 'sweeppad', cat: 'pads', name: 'Filter sweep pad', who: 'Trance, progressive builds', p: P({ wave: 'sawtooth', voices: 5, detune: 18, cut: 600, res: 4, env: 0, att: 0.6, dec: 1, sus: 1, rel: 1.5, lfo: 'filter', lfoRate: 0.1, lfoDepth: 0.6, width: 0.8, vol: 0.5 }) },
   ];
-  const CATS = [['plucks', 'Plucks & keys'], ['leads', 'Leads'], ['bells', 'Bells & mallets'], ['big', 'Big & wide'], ['retro', 'Retro & chip'], ['bass', 'Basses'], ['chords', 'Chords & pads']];
+  const CATS = [['plucks', 'Plucks & keys'], ['leads', 'Leads'], ['bells', 'Bells & mallets'], ['big', 'Big & wide'], ['retro', 'Retro & chip'], ['bass', 'Basses'], ['chords', 'Chords & stabs'], ['pads', 'Pads']];
   // The three melodic tracks that share this synth. keys = where each keeps its sound in the song state.
   const PARTS = [
     { id: 'lead', name: 'Lead', cat: null, keys: ['synth', 'synthId'] },
     { id: 'bass', name: 'Bass', cat: 'bass', keys: ['bassSynth', 'bassSynthId'] },
     { id: 'pad', name: 'Chords', cat: 'chords', keys: ['padSynth', 'padSynthId'] },
+    { id: 'wash', name: 'Pad', cat: 'pads', keys: ['washSynth', 'washSynthId'] },
   ];
   const part = id => PARTS.find(x => x.id === id) || PARTS[0];
   // One part's sound in the song state, shaped like { synth, synthId } for the panel.
