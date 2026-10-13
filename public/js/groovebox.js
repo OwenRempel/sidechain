@@ -75,13 +75,15 @@ const STYLES={
 };
 
 let S;
+const defaultSections=()=>Theory.ARRANGEMENT.map(s=>({...s,tracks:[...s.tracks]}));
 function fresh(style,key){
   const st=STYLES[style];
   return {style,key:key??pick([0,2,5,7,9,4]),scale:pick(st.scales),prog:pick(st.progs).slice(),bpm:st.bpm,swing:st.swing,cutoff:1,wobble:st.wobble,
-    space:st.space,echo:st.echo,vol:.8,arrange:S?.arrange||false,sound:{...st.sound},pat:st.gen(),mute:S?.mute||{}};
+    space:st.space,echo:st.echo,vol:.8,arrange:S?.arrange||false,sections:S?.sections||defaultSections(),sound:{...st.sound},pat:st.gen(),mute:S?.mute||{}};
 }
 try{const s=JSON.parse(localStorage.getItem('sidechain-v1'));if(s&&s.pat&&STYLES[s.style])S=s}catch(e){}
 if(!S)S=fresh('futurebass',0);
+if(!S.sections)S.sections=defaultSections();
 try{const h=JSON.parse(localStorage.getItem('sidechain-handoff'));if(h){Object.assign(S,h);localStorage.removeItem('sidechain-handoff')}}catch(e){}
 function save(){try{localStorage.setItem('sidechain-v1',JSON.stringify(S))}catch(e){}}
 
@@ -90,6 +92,7 @@ const semis=d=>{const sc=SCALES[S.scale],o=Math.floor(d/7),i=((d%7)+7)%7;return 
 const mtof=m=>440*Math.pow(2,(m-69)/12);
 const bassBase=()=>36+(S.key>=7?S.key-12:S.key);
 function chordName(r){const rs=semis(r),t=semis(r+2)-rs,f=semis(r+4)-rs;return NOTE[((S.key+rs)%12+12)%12]+(t===3?(f===6?'°':'m'):'')}
+function roman(r){const rs=semis(r),t=semis(r+2)-rs,f=semis(r+4)-rs,n=['I','II','III','IV','V','VI','VII'][((r%7)+7)%7];return t===3?n.toLowerCase()+(f===6?'°':''):n}
 
 /* ---------- audio engine ---------- */
 let ctx,masterGain,masterFilter,duck,drumBus,musicBus,leadOut,padOut,revIn,delIn,delay,analyser,noiseBuf,ohatG=null;
@@ -171,13 +174,13 @@ function pad(t,freqs,dur){
 const chordFreqs=r=>[0,2,4].map(k=>mtof(bassBase()+24+semis(r+k)));
 
 /* ---------- arrangement + scheduler ---------- */
-const ALL=new Set(TRACKS.map(t=>t.id));
-function section(bar){const b=bar%16;
-  if(b<4)return{name:'Intro',set:new Set(['kick','hat','ohat','pad'])};
-  if(b<8)return{name:'Build',set:new Set(['kick','clap','hat','ohat','bass','pad']),roll:b===7,b};
-  return{name:'Drop',set:ALL}}
-function cutoffAt(bar,st){const c=cutHz();if(!S.arrange)return c;const b=bar%16;
-  if(b<4)return Math.min(c,900);if(b<8)return 250*Math.pow(c/250,((b-4)*16+st)/64);return c}
+// Sections come from S.sections (edited in the Arrangement panel). Intro keeps the filter dark,
+// Build sweeps it open and ends on a snare roll.
+function section(bar){const s=Theory.sectionAt(bar,S.sections);if(!s)return null;
+  return{...s,set:new Set(s.tracks),roll:s.build&&s.bars>1&&s.b===s.bars-1}}
+const firstSec=()=>S.arrange?(S.sections.find(s=>s.bars)?.name||'Loop'):'Loop';
+function cutoffAt(bar,st){const c=cutHz(),s=S.arrange&&section(bar);if(!s)return c;
+  if(s.dark)return Math.min(c,900);if(s.build)return 250*Math.pow(c/250,(s.b*16+st)/(s.bars*16));return c}
 
 let playing=false,step=0,bar=0,nextT=0,timer=null;const q=[];
 function scheduleStep(st,t,bar){
@@ -208,7 +211,7 @@ function start(){
 function stop(){
   playing=false;clearInterval(timer);q.length=0;setPH(-1);
   $('#play').classList.remove('on');$('#play').textContent='▶ Play';
-  $('#barN').textContent='1';$('#secN').textContent=S.arrange?'Intro':'Loop';showChord(-1);
+  $('#barN').textContent='1';$('#secN').textContent=firstSec();showChord(-1);
   if(masterFilter)masterFilter.frequency.setTargetAtTime(cutHz(),ctx.currentTime,.05);
 }
 
@@ -229,14 +232,53 @@ function renderTrack(id){
   const tr=TRACKS.find(t=>t.id===id),cells=document.querySelectorAll(`#row-${id} .cell`),a=S.pat[id];
   $('#row-'+id).classList.toggle('muted',!!S.mute[id]);
   if(tr.type==='drum'){cells.forEach((c,i)=>{c.className='cell'+((i>>2)%2?' alt':'')+(a[i]?(a[i]<.75?' soft':' on'):'')});return}
-  let tail=0;cells.forEach((c,i)=>{const n=a[i];c.className='cell'+((i>>2)%2?' alt':'');
+  let tail=0;cells.forEach((c,i)=>{const n=a[i];c.className='cell'+((i>>2)%2?' alt':'')+(sel&&sel.id===id&&sel.i===i?' sel':'');
     if(n){c.classList.add('on','mel');c.querySelector('i').style.setProperty('--y',(85-Math.max(0,Math.min(1,(n.d+3)/13))*75)+'%');tail=n.len-1}
     else if(tail>0){c.classList.add('tail');tail--}});
 }
 const renderAll=()=>TRACKS.forEach(t=>renderTrack(t.id));
 let lastPH=-1;function setPH(i){if(lastPH>=0)colCells[lastPH].forEach(c=>c.classList.remove('ph'));if(i>=0)colCells[i].forEach(c=>c.classList.add('ph'));lastPH=i}
-function renderProg(){$('#prog').innerHTML=S.prog.map(r=>`<span>${chordName(r)}</span>`).join('')}
-function showChord(i){[...$('#prog').children].forEach((s,k)=>s.classList.toggle('now',k===i))}
+function renderProg(){
+  $('#prog').innerHTML=S.prog.map((r,i)=>`<select data-i="${i}" aria-label="Bar ${i+1} chord">${[0,1,2,3,4,5,6].map(d=>
+    `<option value="${d}"${d===((r%7)+7)%7?' selected':''}>${chordName(d)} · ${roman(d)}</option>`).join('')}</select>`).join('')+
+    `<button class="pm" data-n="-1" aria-label="Fewer bars"${S.prog.length<2?' disabled':''}>−</button><button class="pm" data-n="1" aria-label="More bars"${S.prog.length>7?' disabled':''}>+</button>`;
+}
+function showChord(i){$('#prog').querySelectorAll('select').forEach((s,k)=>s.classList.toggle('now',k===i))}
+
+/* note editor: pick pitch, length, level and wobble for the selected bass/lead step */
+let sel=null;const lastD={bass:0,lead:0};
+const DEG=['Root','2nd','3rd','4th','5th','6th','7th'];
+function degLabel(d){const i=((d%7)+7)%7,o=Math.floor(d/7);return DEG[i]+(o>0?' ↑':o<0?' ↓':'')}
+function renderEditor(){
+  const ed=$('#noteEd'),n=sel&&S.pat[sel.id][sel.i];
+  if(!n){sel=null;ed.hidden=true;return}
+  let nx=sel.i+1;while(nx<16&&!S.pat[sel.id][nx])nx++;
+  const tr=TRACKS.find(t=>t.id===sel.id),bar1=NOTE[((S.key+semis(S.prog[0]+n.d))%12+12)%12];
+  ed.hidden=false;ed.style.setProperty('--c',`var(--${sel.id})`);
+  ed.innerHTML=`<span class="lbl ed-t">${tr.name} · step ${sel.i+1}</span>
+    <div class="field"><span class="lbl">Pitch</span><button class="pm" data-a="d" data-n="-1" aria-label="Lower"${n.d<=-7?' disabled':''}>−</button><output>${degLabel(n.d)} <small>${bar1} in bar 1</small></output><button class="pm" data-a="d" data-n="1" aria-label="Higher"${n.d>=14?' disabled':''}>+</button></div>
+    <div class="field"><span class="lbl">Length</span><button class="pm" data-a="len" data-n="-1" aria-label="Shorter"${n.len<=1?' disabled':''}>−</button><output>${n.len} step${n.len>1?'s':''}</output><button class="pm" data-a="len" data-n="1" aria-label="Longer"${sel.i+n.len>=nx?' disabled':''}>+</button></div>
+    <div class="field"><span class="lbl">Level</span><button class="btn sm" data-a="v" aria-pressed="${n.v>=.95}">${n.v>=.95?'Loud':'Soft'}</button></div>
+    ${sel.id==='bass'?`<div class="field"><span class="lbl">Wobble</span><select data-a="w" aria-label="Wobble rate">${[1,2,3,4,6].map(w=>`<option value="${w}"${(n.w||2)===w?' selected':''}>×${w}</option>`).join('')}</select></div>`:''}
+    <button class="btn sm" data-a="del">Delete</button>`;
+}
+function editNote(a,val){
+  const n=S.pat[sel.id][sel.i];
+  if(a==='del'){S.pat[sel.id][sel.i]=null;sel=null}
+  else if(a==='d'){n.d=Math.max(-7,Math.min(14,n.d+val));lastD[sel.id]=n.d}
+  else if(a==='len'){let nx=sel.i+1;while(nx<16&&!S.pat[sel.id][nx])nx++;n.len=Math.max(1,Math.min(nx-sel.i,n.len+val))}
+  else if(a==='v')n.v=n.v>=.95?.7:1;
+  else if(a==='w')n.w=val;
+  const id=sel?.id??null,i=sel?.i;renderEditor();save();
+  if(id){renderTrack(id);if(a!=='w')preview(id,i)}else renderAll();
+}
+
+/* arrangement panel: bars per section and which tracks play in each */
+function renderArr(){
+  $('#arrRows').innerHTML=S.sections.map((s,k)=>`<div class="sec" data-k="${k}">
+    <div class="field"><span class="sec-n">${s.name}</span><select data-k="${k}" aria-label="${s.name} length">${[0,1,2,4,8,16].map(b=>`<option value="${b}"${b===s.bars?' selected':''}>${b} bar${b===1?'':'s'}</option>`).join('')}</select></div>
+    <div class="sec-t">${TRACKS.map(t=>`<button class="tchip" style="--c:var(--${t.id})" data-k="${k}" data-t="${t.id}" aria-pressed="${s.tracks.includes(t.id)}">${t.name}</button>`).join('')}</div></div>`).join('');
+}
 
 function buildStyles(){
   $('#styles').innerHTML=Object.entries(STYLES).map(([k,v])=>`<button class="chip" data-s="${k}" aria-pressed="${k===S.style}">${v.label}</button>`).join('');
@@ -260,9 +302,10 @@ function applyAudio(){if(!ctx)return;const t=ctx.currentTime;
 function syncTop(){
   $('#key').value=S.key;$('#scale').value=S.scale;$('#arrange').setAttribute('aria-pressed',S.arrange);
   document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c.dataset.s===S.style));
-  if(!playing)$('#secN').textContent=S.arrange?'Intro':'Loop';
+  if(!playing)$('#secN').textContent=firstSec();
+  $('#arr').classList.toggle('off',!S.arrange);
 }
-function renderEverything(){renderAll();renderProg();syncMacros();syncTop();applyAudio();save()}
+function renderEverything(){renderAll();renderProg();renderEditor();renderArr();syncMacros();syncTop();applyAudio();save()}
 
 $('#key').innerHTML=NOTE.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
 $('#scale').innerHTML=Object.keys(SCALES).map(s=>`<option>${s}</option>`).join('');
@@ -270,29 +313,42 @@ buildStyles();buildGrid();buildMacros();renderEverything();
 
 $('#midi').onclick=()=>exportMidi(S,{semis,bassBase,leadOct:S.sound.leadOct||0});
 $('#play').onclick=()=>playing?stop():start();
-$('#gen').onclick=()=>{S=fresh(S.style,S.key);renderEverything()};
+$('#gen').onclick=()=>{S=fresh(S.style,S.key);sel=null;renderEverything()};
 $('#arrange').onclick=()=>{S.arrange=!S.arrange;if(playing){bar=0}renderEverything()};
-$('#styles').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;S=fresh(b.dataset.s,S.key);renderEverything()};
-$('#key').onchange=e=>{S.key=+e.target.value;renderProg();save()};
-$('#scale').onchange=e=>{S.scale=e.target.value;renderProg();save()};
+$('#styles').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;S=fresh(b.dataset.s,S.key);sel=null;renderEverything()};
+$('#prog').onchange=e=>{const i=+e.target.dataset.i;S.prog[i]=+e.target.value;renderProg();renderEditor();save();
+  if(ctx&&!playing){ctx.resume();pad(ctx.currentTime+.01,chordFreqs(S.prog[i]),.5)}};
+$('#prog').onclick=e=>{const b=e.target.closest('.pm');if(!b)return;
+  if(+b.dataset.n>0)S.prog.push(S.prog[S.prog.length-1]);else S.prog.pop();renderProg();save()};
+$('#noteEd').onclick=e=>{const b=e.target.closest('button[data-a]');if(b&&sel)editNote(b.dataset.a,+b.dataset.n||0)};
+$('#noteEd').onchange=e=>{if(e.target.dataset.a==='w'&&sel)editNote('w',+e.target.value)};
+$('#arrRows').onchange=e=>{const k=e.target.dataset.k;if(k==null)return;S.sections[k].bars=+e.target.value;if(playing)bar=0;syncTop();save()};
+$('#arrRows').onclick=e=>{const b=e.target.closest('.tchip');if(!b)return;const s=S.sections[b.dataset.k],t=b.dataset.t;
+  s.tracks=s.tracks.includes(t)?s.tracks.filter(x=>x!==t):[...s.tracks,t];b.setAttribute('aria-pressed',s.tracks.includes(t));save()};
+$('#arrReset').onclick=()=>{S.sections=defaultSections();renderArr();syncTop();save()};
+$('#key').onchange=e=>{S.key=+e.target.value;renderProg();renderEditor();save()};
+$('#scale').onchange=e=>{S.scale=e.target.value;renderProg();renderEditor();save()};
 $('#macros').oninput=e=>{const k=e.target.dataset.k;if(!k)return;S[k]=+e.target.value;syncMacros();applyAudio();save()};
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|SELECT|BUTTON/.test(e.target.tagName)){e.preventDefault();playing?stop():start()}});
 
 function preview(id,i){
   if(!ctx||playing)return;ctx.resume();const t=ctx.currentTime+.01,r=S.prog[0],sd=60/S.bpm/4,P=S.pat;
   ({kick:()=>kick(t,1),clap:()=>clap(t,1),hat:()=>hat(t,.7,false),ohat:()=>hat(t,.7,true),pad:()=>pad(t,chordFreqs(r),.4),
-    bass:()=>bass(t,mtof(bassBase()+semis(r+P.bass[i].d)),sd*P.bass[i].len,1),lead:()=>lead(t,mtof(bassBase()+36+semis(r+P.lead[i].d)),sd*P.lead[i].len,1)})[id]();
+    bass:()=>bass(t,mtof(bassBase()+semis(r+P.bass[i].d)),sd*P.bass[i].len,1),lead:()=>lead(t,mtof(bassBase()+36+(S.sound.leadOct||0)+semis(r+P.lead[i].d)),sd*P.lead[i].len,1)})[id]();
 }
 $('#grid').onclick=e=>{
   const mute=e.target.closest('.mute'),dice=e.target.closest('.dice'),cell=e.target.closest('.cell');
   if(mute){const id=mute.dataset.t;S.mute[id]=!S.mute[id];renderTrack(id);save();return}
-  if(dice){const id=dice.dataset.t;S.pat[id]=STYLES[S.style].gen()[id];renderTrack(id);save();return}
+  if(dice){const id=dice.dataset.t;S.pat[id]=STYLES[S.style].gen()[id];renderTrack(id);renderEditor();save();return}
   if(!cell)return;
   const id=cell.parentElement.dataset.t,i=+cell.dataset.i,a=S.pat[id],tr=TRACKS.find(t=>t.id===id);
   if(tr.type==='drum'){a[i]=id==='pad'?(a[i]?0:1):(a[i]===0?1:a[i]>=.75?.5:0)}
-  else if(a[i])a[i]=null;
-  else{for(let j=i-1;j>=0;j--)if(a[j]){if(j+a[j].len>i)a[j].len=i-j;break}
-    let nx=i+1;while(nx<16&&!a[nx])nx++;a[i]=note(pick(CT),1,1);}
+  else{const prev=sel;
+    // tap an empty step to add a note (at the last pitch you chose), tap a note to edit it, tap it again to delete
+    if(a[i]&&prev&&prev.id===id&&prev.i===i){a[i]=null;sel=null}
+    else{if(!a[i]){for(let j=i-1;j>=0;j--)if(a[j]){if(j+a[j].len>i)a[j].len=i-j;break}a[i]=note(lastD[id],1,1)}
+      sel={id,i}}
+    if(prev&&prev.id!==id)renderTrack(prev.id);renderEditor()}
   renderTrack(id);save();if(a[i])preview(id,i);
 };
 

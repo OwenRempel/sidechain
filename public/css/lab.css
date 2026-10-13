@@ -55,3 +55,16 @@ h3 { margin: 0; font-size: 1.1rem; letter-spacing: .05em; }
 .meter div { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
 .meter i { display: block; height: 100%; background: var(--clap); }
 @media (max-width: 600px) { .beat-view { grid-template-columns: 1fr; } }
+
+/* melody */
+.notes { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+.mnote { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px; border-radius: 6px;
+  background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--rc); }
+.mnote b { font-family: var(--mono); font-size: .95rem; }
+.mnote span { font-size: .68rem; color: var(--dim); }
+.mnote.chord { --rc: var(--home); background: color-mix(in srgb, var(--home) 16%, var(--panel)); }
+.mnote.scale { --rc: var(--away); }
+.mnote.outside { --rc: var(--tension); opacity: .75; }
+.mnote:active { background: var(--panel2); }
+.contour { grid-column: 1; width: 100%; max-width: 240px; height: 40px; fill: var(--lead); }
+.item .btns.wide { grid-column: 1 / -1; grid-row: auto; flex-wrap: wrap; }

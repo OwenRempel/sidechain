@@ -47,3 +47,31 @@ test('beats are 16 steps and stats stay in 0..1', () => {
   }
   assert.deepEqual(T.parseBeat('x.o.'), [1, 0, 0.5, 0]);
 });
+
+test('sectionAt walks the arrangement and loops', () => {
+  const A = T.ARRANGEMENT;
+  assert.deepEqual([0, 3, 4, 7, 8, 15, 16].map(b => T.sectionAt(b, A).name), ['Intro', 'Intro', 'Build', 'Build', 'Drop', 'Drop', 'Intro']);
+  assert.equal(T.sectionAt(6, A).b, 2);
+  const noIntro = A.map(s => ({ ...s, bars: s.name === 'Intro' ? 0 : s.bars }));
+  assert.equal(T.sectionAt(0, noIntro).name, 'Build');
+  assert.equal(T.sectionAt(0, A.map(s => ({ ...s, bars: 0 }))), null);
+});
+
+test('noteRole sorts notes into chord tones, key notes and outside notes', () => {
+  assert.equal(T.degSemi('major', 7), 12);
+  assert.equal(T.degSemi('major', -1), -1);
+  assert.deepEqual(T.noteRole('major', 0, 4), { role: 'chord', name: '3rd' });
+  assert.deepEqual(T.noteRole('major', 3, 0), { role: 'chord', name: '5th' }, 'C is the 5th of F');
+  assert.deepEqual(T.noteRole('major', 0, 2), { role: 'scale', name: '2nd' });
+  assert.deepEqual(T.noteRole('major', 0, 3), { role: 'outside', name: '♭3' });
+});
+
+test('melody phrases fill whole bars', () => {
+  const beats = notes => notes.reduce((a, n) => a + n[1], 0);
+  for (const h of T.HOOKS) {
+    const total = h.parts.reduce((a, p) => a + beats(p.notes), 0);
+    assert.equal(total, h.prog.length * 4, h.name);
+    h.parts.forEach(p => assert.equal(beats(p.notes) % 4, 0, `${h.name} / ${p.label}`));
+  }
+  T.SHAPES.forEach(s => assert.equal(beats(s.notes), 5.5, s.name));
+});
