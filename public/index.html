@@ -33,6 +33,17 @@
 
   <div class="panel noteed" id="noteEd" hidden></div>
 
+  <section class="panel synth" id="synth" aria-labelledby="synH">
+    <header><span class="lbl" id="synH">Lead synth</span>
+      <select id="synPreset" aria-label="Lead sound preset"></select>
+      <button class="btn sm" id="synTry">▶ Try</button>
+      <button class="btn sm" id="synSave">Save</button>
+      <button class="btn sm" id="synDel" hidden>Delete</button>
+    </header>
+    <p class="tip" id="synWho"></p>
+    <details id="synEdit"><summary>Shape the sound</summary><div class="sgrps" id="synGroups"></div></details>
+  </section>
+
   <div class="panel macros" id="macros"></div>
 
   <section class="panel arr" id="arr" aria-labelledby="arrH">
@@ -41,10 +52,11 @@
     <div id="arrRows"></div>
   </section>
 
-  <p class="tip">Tap a drum step to cycle it loud → soft → off. Tap a bass or lead step to add a note and open the note editor (pitch, length, level); tap a selected note again to delete it. Change any chord from its dropdown, and use − / + to set how many bars the progression has. Tap a track name to mute it, ⟳ to reroll just that part. Arrange plays the sections set in the Arrangement panel. On iPhone, flip the ring/silent switch off if you hear nothing.</p>
+  <p class="tip">Tap a drum step to cycle it loud → soft → off. Tap a bass or lead step to add a note and open the note editor (pitch, length, level); tap a selected note again to delete it. Change any chord from its dropdown, and use − / + to set how many bars the progression has. Tap a track name to mute it, ⟳ to reroll just that part. Arrange plays the sections set in the Arrangement panel. Pick a lead sound in Lead synth, then open Shape the sound to tweak it; Save keeps your own versions. On iPhone, flip the ring/silent switch off if you hear nothing.</p>
 </div>
 
 <script src="js/theory.js"></script>
+<script src="js/synth.js"></script>
 <script src="js/midi.js"></script>
 <script src="js/groovebox.js"></script>
 </body></html>

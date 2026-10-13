@@ -25,6 +25,7 @@ public/lab.html        Theory Lab page (Harmony + Rhythm tabs)
 public/css/app.css     shared tokens and components (dark hardware look, single theme)
 public/css/lab.css     lab-only styles
 public/js/groovebox.js sequencer, Web Audio synth engine, style generators (monolithic prototype)
+public/js/synth.js     lead synth params, presets, normalize (pure data, tested); lead() in groovebox.js plays it
 public/js/midi.js      Standard MIDI File export (type 1, drums ch10)
 public/js/theory.js    pure theory data and helpers (no DOM/audio, unit-testable)
 public/js/lab.js       Theory Lab UI and preview audio
@@ -39,7 +40,7 @@ Plain ES scripts, no build step. Keep it that way until a feature needs a bundle
 - `prog`: array of **scale-degree indices** (0 = home), one chord per bar. Chord = degrees r, r+2, r+4.
 - `pat`: 16-step patterns. Drums are numbers (0 off, 0.5 soft, 1 full). `bass`/`lead` are `{d, len, v, w?}`, with `d` a scale degree relative to the current chord root and `w` the wobble rate multiplier.
 - The Lab hands a progression to the Groovebox via `localStorage['sidechain-handoff'] = {key, scale, prog}`.
-- Groovebox state persists in `localStorage['sidechain-v1']`.
+- Groovebox state persists in `localStorage['sidechain-v1']`. `S.synth` holds the lead synth params (keys in `Synth.PARAMS`), `S.synthId` the preset it came from (`u:<name>` for a saved one). Saved lead sounds live in `localStorage['sidechain-presets']`.
 
 ## Status
 
@@ -53,7 +54,7 @@ Done (v0.1, untested in a real browser session, so verify audio first):
 
 1. **Engine refactor:** move instruments out of groovebox.js into `engine.js` as `createEngine(ctx)` so it works with an `OfflineAudioContext`. Unlocks:
 2. **WAV export:** render N bars offline (and stems per track).
-3. **Synth layer (M1):** per-track synth panel with oscillator type, unison/detune, filter, ADSR, LFO, plus an FM bell layer for Marshmello-style chimes. Save/load presets.
+3. **Synth layer (M1):** lead synth panel done (osc + unison, layer osc, FM bell, filter + env, ADSR, LFO, 11 presets, save/load your own). Still to do: same panel for bass and chords. Originally: per-track synth panel with oscillator type, unison/detune, filter, ADSR, LFO, plus an FM bell layer for Marshmello-style chimes. Save/load presets.
 4. **Multi-bar patterns (M2):** 4-8 bar patterns, A/B/C/D bank, piano-roll-lite for lead/chords.
 5. **AI arranger UI (M3):** "Arrange with AI" button posts song state to `/api/arrange`, renders a section timeline, plays it back. Tighten the JSON schema and validate the response.
 6. **Lab extras (M7/M8):** function wheel and Tonnetz views, emotion map (bright/dark × tense/resolved), "what chord next?" suggestions in the Groovebox, note names as an optional overlay, kick + bass frequency lock view.
