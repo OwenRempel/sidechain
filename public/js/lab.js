@@ -23,10 +23,10 @@ function tone(freq, t, dur, { wave = 'triangle', gain = 0.12, cut = 2400 } = {})
   o.connect(lp).connect(g).connect(out); o.start(t); o.stop(t + dur + 0.3);
 }
 // rootSemi is relative to the home note; voiced around C3-C4.
-function playChord(rootSemi, q, t = audio().currentTime + 0.02, dur = 0.9) {
+function playChord(rootSemi, q, t = audio().currentTime + 0.02, dur = 0.9, gain = 0.12) {
   const base = 48 + state.tonic;
-  T.chordNotes(rootSemi, q).forEach(n => tone(T.mtof(base + n), t, dur));
-  tone(T.mtof(base + rootSemi - 12), t, dur, { wave: 'sine', gain: 0.18 });
+  T.chordNotes(rootSemi, q).forEach(n => tone(T.mtof(base + n), t, dur, { gain }));
+  tone(T.mtof(base + rootSemi - 12), t, dur, { wave: 'sine', gain: gain * 1.5 });
 }
 function playSeq(chords, beat = 0.75) {
   const t0 = audio().currentTime + 0.05;
@@ -52,7 +52,7 @@ const DRUMS = {
 document.querySelector('.tabs').onclick = e => {
   const b = e.target.closest('[data-tab]'); if (!b) return;
   document.querySelectorAll('.tabs .chip').forEach(c => c.setAttribute('aria-pressed', c === b));
-  $('#tab-harmony').hidden = b.dataset.tab !== 'harmony'; $('#tab-rhythm').hidden = b.dataset.tab !== 'rhythm';
+  ['harmony', 'melody', 'rhythm'].forEach(t => { $('#tab-' + t).hidden = b.dataset.tab !== t; });
   if (b.dataset.tab !== 'rhythm') stopBeat();
 };
 
@@ -150,6 +150,54 @@ function playInterval(which) {
 }
 $('#ovA').onclick = () => playInterval('a'); $('#ovB').onclick = () => playInterval('b'); $('#ovAB').onclick = () => playInterval('ab');
 
+/* ---------- melody ---------- */
+let mChord = 0;
+const BEAT = 0.42, MEL_BASE = () => 60 + state.tonic, beats = notes => notes.reduce((a, n) => a + n[1], 0);
+const chordOf = d => T.degreeChord(state.mode, d);
+// Mini piano roll: one bar per note, height = pitch.
+function contour(notes) {
+  const W = 240, H = 40, tot = beats(notes), ds = notes.filter(n => n[0] != null).map(n => n[0]), lo = Math.min(...ds), hi = Math.max(...ds);
+  let x = 0, s = '';
+  notes.forEach(([d, l]) => {
+    if (d != null) s += `<rect x="${(x / tot * W).toFixed(1)}" y="${(hi === lo ? H / 2 : (hi - d) / (hi - lo) * (H - 5)).toFixed(1)}" width="${Math.max(1, l / tot * W - 1.5).toFixed(1)}" height="5" rx="1.5"/>`;
+    x += l;
+  });
+  return `<svg class="contour" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${s}</svg>`;
+}
+function playNotes(notes, t, { wave = 'triangle', oct = 0 } = {}) {
+  notes.forEach(([d, l]) => {
+    if (d != null) tone(T.mtof(MEL_BASE() + oct + T.degSemi(state.mode, d)), t, l * BEAT * 0.8, { wave, gain: wave === 'sine' ? 0.18 : 0.08, cut: wave === 'sine' ? 6000 : 3200 });
+    t += l * BEAT;
+  });
+  return t;
+}
+function playHook(h, part) {
+  const parts = part == null ? h.parts : [h.parts[part]];
+  let bar = part == null ? 0 : beats(h.parts.slice(0, part).flatMap(p => p.notes)) / 4, t = audio().currentTime + 0.05;
+  parts.forEach(p => {
+    const bars = beats(p.notes) / 4;
+    for (let b = 0; b < bars; b++) { const c = chordOf(h.prog[(bar + b) % h.prog.length]); playChord(c.root, c.q, t + b * 4 * BEAT, 4 * BEAT * 0.95, 0.06); }
+    t = playNotes(p.notes, t, h); bar += bars;
+  });
+}
+function renderMelody() {
+  $('#mKey').textContent = `Everything here is in ${T.NOTE[state.tonic]} ${state.mode}. Change the key on the Harmony tab.`;
+  $('#mChords').innerHTML = T.DEGREES[state.mode].map((d, i) => `<button class="chip" data-d="${i}" aria-pressed="${i === mChord}">${d.rn} · ${T.chordName(state.tonic, chordOf(i).root, chordOf(i).q)}</button>`).join('');
+  $('#mNotes').innerHTML = T.NOTE.map((_, s) => { const r = T.noteRole(state.mode, mChord, s);
+    return `<button class="mnote ${r.role}" data-s="${s}" aria-label="${T.NOTE[(state.tonic + s) % 12]}, ${r.name}, ${r.role} note"><b>${T.NOTE[(state.tonic + s) % 12]}</b><span>${r.name}</span></button>`; }).join('');
+  $('#shapes').innerHTML = T.SHAPES.map((sh, i) => `<div class="item"><span class="t">${sh.name}</span>${contour(sh.notes)}<span class="btns"><button class="btn" data-i="${i}" aria-label="Play ${sh.name}">▶</button></span><span class="d">${sh.feel}</span></div>`).join('');
+  $('#hooks').innerHTML = T.HOOKS.map((h, i) => `<div class="item"><span class="t">${h.name}</span><span class="seq">${h.prog.map(d => T.chordName(state.tonic, chordOf(d).root, chordOf(d).q)).join(' → ')}</span>${contour(h.parts.flatMap(p => p.notes))}
+    <span class="d">${h.feel}</span><span class="btns wide">${h.parts.length > 1 ? h.parts.map((p, k) => `<button class="btn" data-h="${i}" data-p="${k}">${p.label}</button>`).join('') : ''}<button class="btn" data-h="${i}" aria-label="Play ${h.name}">▶ ${h.parts.length > 1 ? 'Both' : 'Play'}</button></span></div>`).join('');
+}
+$('#mChords').onclick = e => { const b = e.target.closest('.chip'); if (!b) return; mChord = +b.dataset.d; renderMelody(); const c = chordOf(mChord); playChord(c.root, c.q); };
+$('#mNotes').onclick = e => {
+  const b = e.target.closest('.mnote'); if (!b) return; const c = chordOf(mChord), t = audio().currentTime + 0.02;
+  playChord(c.root, c.q, t, 1.2, 0.06); tone(T.mtof(MEL_BASE() + 12 + +b.dataset.s), t + 0.15, 0.9, { gain: 0.14 });
+};
+$('#shapes').onclick = e => { const b = e.target.closest('button'); if (!b) return; const t = audio().currentTime + 0.05;
+  playChord(0, chordOf(0).q, t, 5.5 * BEAT, 0.06); playNotes(T.SHAPES[+b.dataset.i].notes, t); };
+$('#hooks').onclick = e => { const b = e.target.closest('button'); if (!b) return; playHook(T.HOOKS[+b.dataset.h], b.dataset.p == null ? null : +b.dataset.p); };
+
 /* ---------- rhythm ---------- */
 const DRUM_ROWS = [['kick', 'kick', 'kick', 98], ['snare', 'clap', 'clap', 78], ['hat', 'hat', 'hat', 58], ['ohat', 'ohat', 'ohat', 40]];
 $('#jobs').innerHTML = T.JOBS.map(j => `<button class="job" data-d="${j.id}" style="--c:var(--${j.id})"><b>${j.name}</b><span>${j.job}</span></button>`).join('');
@@ -196,7 +244,7 @@ $('#bSwing').oninput = e => { swing = +e.target.value; $('#oSwing').textContent 
 $('#bTempoR').oninput = e => { beatBpm = +e.target.value; $('#oTempo').textContent = beatBpm + ' bpm'; };
 
 /* ---------- init ---------- */
-function renderHarmony() { $('#key').value = state.tonic; $('#mode').value = state.mode; renderChords(); renderCircle(); renderProgs(); renderMoves(); }
+function renderHarmony() { $('#key').value = state.tonic; $('#mode').value = state.mode; renderChords(); renderCircle(); renderProgs(); renderMoves(); renderMelody(); }
 $('#key').onchange = e => { state.tonic = +e.target.value; saveLab(); renderHarmony(); };
 $('#mode').onchange = e => { state.mode = e.target.value; saveLab(); renderHarmony(); };
 renderHarmony(); renderOvertones(); renderBeat();

@@ -13,6 +13,7 @@
 
   <div class="tabs" role="tablist">
     <button class="chip" role="tab" data-tab="harmony" aria-pressed="true">Harmony</button>
+    <button class="chip" role="tab" data-tab="melody" aria-pressed="false">Melody</button>
     <button class="chip" role="tab" data-tab="rhythm" aria-pressed="false">Rhythm</button>
   </div>
 
@@ -58,6 +59,27 @@
         <div class="ov-foot"><span class="mono" id="ovShared"></span>
           <span class="btns"><button class="btn" id="ovA">Note A</button><button class="btn" id="ovB">Note B</button><button class="btn" id="ovAB">Together</button></span></div>
       </div>
+    </div>
+  </section>
+
+  <!-- ================= MELODY ================= -->
+  <section id="tab-melody" class="stack" hidden>
+    <p class="tip" id="mKey"></p>
+    <div class="block">
+      <h2>Which notes are safe?</h2>
+      <p class="tip">Pick a chord, then tap notes over it. <b class="r-home">Chord notes</b> land and feel solid. <b class="r-away">Key notes</b> lean, and want to step to a chord note. <b class="r-tension">Outside notes</b> clash, so use them only in passing. The same note can be solid over one chord and leaning over the next.</p>
+      <div class="ints" id="mChords"></div>
+      <div class="notes" id="mNotes"></div>
+    </div>
+    <div class="block">
+      <h2>Shapes: where the melody goes</h2>
+      <p class="tip">Before any note names, a melody is a shape: up, down, jump or stay. Each shape has a feeling. Played over the home chord.</p>
+      <div class="list" id="shapes"></div>
+    </div>
+    <div class="block">
+      <h2>Hooks: what makes it stick</h2>
+      <p class="tip">A hook is a short idea your ear wants to hear again. These are the tricks behind most of them. Play the parts alone, then together.</p>
+      <div class="list" id="hooks"></div>
     </div>
   </section>
 

@@ -8,6 +8,7 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
+[hidden]{display:none !important}
 html,body{background:var(--bg);color:var(--ink)}
 body{font-family:var(--display);font-size:15px}
 .wrap{max-width:780px;margin:0 auto;padding-inline:16px;padding-block:18px 40px;display:flex;flex-direction:column;gap:14px}
@@ -80,7 +81,6 @@ body{margin:0}
 .btn.sm{padding:6px 10px;font-size:.72rem}
 .btn.sm[aria-pressed="true"]{border-color:var(--c,var(--ink));color:var(--c,var(--ink))}
 .cell.sel{outline:2px solid var(--ink);outline-offset:-2px}
-.noteed[hidden]{display:none}
 .noteed{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;border-left:3px solid var(--c)}
 .noteed .ed-t{width:100%;color:var(--c)}
 .noteed output{font-family:var(--mono);font-size:.85rem;min-width:5.5em;text-align:center}

@@ -112,6 +112,52 @@ const Theory = (() => {
     const kickSnare = [...all[0], ...all[1]].map((v, i) => (v && (i % 16) % 4 !== 0 ? 1 : 0));
     return { busy: Math.min(1, hits / 28), sync: Math.min(1, kickSnare.reduce((a, b) => a + b, 0) / 4), drive: Math.min(1, all[0].filter(Boolean).length / 4) };
   }
+  // Melody. Notes are [scale degree from home (0 = home, 7 = octave up, null = rest), length in beats].
+  const degSemi = (mode, d) => SCALE[mode][((d % 7) + 7) % 7] + 12 * Math.floor(d / 7);
+  // How a note (semitones above home) relates to the chord on scale degree chordDeg.
+  const INT_NAME = ['Root', '♭2', '2nd', '♭3', '3rd', '4th', '♭5', '5th', '♭6', '6th', '♭7', '7th'];
+  function noteRole(mode, chordDeg, semi) {
+    const pc = ((semi % 12) + 12) % 12, root = degSemi(mode, chordDeg) % 12, iv = (pc - root + 12) % 12;
+    const tones = [0, 2, 4].map(k => degSemi(mode, chordDeg + k) % 12), k = tones.indexOf(pc);
+    if (k >= 0) return { role: 'chord', name: ['Root', '3rd', '5th'][k] };
+    return { role: SCALE[mode].includes(pc) ? 'scale' : 'outside', name: INT_NAME[iv] };
+  }
+  const steps = (ds, len = 0.5) => ds.map(d => [d, len]);
+  const arpBar = r => steps([r, r + 2, r + 4, r + 7, r + 4, r + 2, r + 4, r + 2]);
+  const SHAPES = [
+    { name: 'Climb', notes: [...steps([0, 1, 2, 3, 4, 5, 6]), [7, 2]],
+      feel: 'Stepping up feels like hope and rising energy. Builds love this.' },
+    { name: 'Fall home', notes: [...steps([7, 6, 5, 4, 3, 2, 1]), [0, 2]],
+      feel: 'Stepping down settles things. It sounds like an ending or a sigh of relief.' },
+    { name: 'Arch', notes: [...steps([0, 2, 4, 5, 7, 5, 4, 2]), [0, 1.5]],
+      feel: 'Up to a peak, then relax. Most singable melodies are an arch.' },
+    { name: 'Leap, then fill', notes: [[0, 1], [5, 1], ...steps([4, 3, 2, 1]), [0, 1.5]],
+      feel: 'A big jump grabs attention; stepping back down fills the gap. Classic cinematic piano.' },
+    { name: 'Hover', notes: [...steps([4, 4, 5, 4, 4, 2, 4, 4]), [4, 1.5]],
+      feel: 'Sit on one note with small neighbours. Chant-like and bouncy, very chiptune.' },
+  ];
+  // Hooks play over a progression (one chord per 4 beats). Parts can be heard alone or together.
+  const HOOKS = [
+    { name: 'Question and answer', prog: [3, 4, 5, 0], wave: 'triangle',
+      feel: 'The first phrase ends on a note that is not home, so it sounds like a question. The second ends on home: the answer. Almost every catchy chorus does this.',
+      parts: [
+        { label: 'Question', notes: [[4, 1], [4, 0.5], [5, 0.5], [4, 1], [2, 1], [3, 1], [2, 0.5], [1, 0.5], [1, 2]] },
+        { label: 'Answer', notes: [[4, 1], [4, 0.5], [5, 0.5], [4, 1], [2, 1], [2, 1], [1, 0.5], [1, 0.5], [0, 2]] },
+      ] },
+    { name: 'Say it three times, then twist', prog: [0, 4, 5, 3], wave: 'square',
+      feel: 'Repeat a short idea so it sticks, then change the last one so it does not get boring. The twist is what people remember.',
+      parts: [
+        { label: 'Repeat', notes: [0, 1, 2].flatMap(() => [[2, 0.5], [4, 0.5], [null, 0.5], [4, 0.5], [5, 1], [4, 1]]) },
+        { label: 'Twist', notes: [[7, 0.5], [6, 0.5], [null, 0.5], [5, 0.5], [4, 2]] },
+      ] },
+    { name: 'Chord-tone chime', prog: [3, 4, 5, 0], wave: 'sine', oct: 12,
+      feel: 'Only play the notes of each chord, up and down. It can never clash, so it sounds sparkly and safe. The Marshmello chime lead.',
+      parts: [{ label: 'Chime', notes: [3, 4, 5, 0].flatMap(arpBar) }] },
+    { name: 'Rhythm is the hook', prog: [5, 3, 0, 4], wave: 'square',
+      feel: 'Barely any pitch change, all bounce. Off-beat repeats make it catchy even with two notes. Very TheFatRat.',
+      parts: [{ label: 'Bounce', notes: [0, 1, 2, 3].flatMap(i => [[4, 0.75], [4, 0.75], [4, 0.5], [null, 0.5], [i === 3 ? 2 : 7, 0.5], [6, 0.5], [4, 0.5]]) }] },
+  ];
+
   // Arrangement: sections play in order, then loop. Each lists its length in bars and which tracks play.
   const ARRANGEMENT = [
     { name: 'Intro', bars: 4, tracks: ['kick', 'hat', 'ohat', 'pad'], dark: true },
@@ -125,7 +171,7 @@ const Theory = (() => {
     let b = bar % total;
     for (const s of secs) { if (b < s.bars) return { ...s, b }; b -= s.bars; }
   }
-  return { NOTE, SCALE, QUAL, DEGREES, PROGRESSIONS, MOVES, INTERVALS, BEATS, JOBS, ARRANGEMENT, chordNotes, chordName, degreeChord, mtof, parseBeat, beatStats, sectionAt };
+  return { NOTE, SCALE, QUAL, DEGREES, PROGRESSIONS, MOVES, INTERVALS, BEATS, JOBS, ARRANGEMENT, SHAPES, HOOKS, chordNotes, chordName, degreeChord, mtof, parseBeat, beatStats, sectionAt, degSemi, noteRole };
 })();
 
 if (typeof module !== 'undefined') module.exports = Theory; // lets node --test require it; browsers ignore this
