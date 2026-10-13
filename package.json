@@ -1,0 +1,8 @@
+{
+  "name": "sidechain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Learn-by-ear EDM groovebox + theory lab, built toward an AI-assisted song builder",
+  "scripts": { "start": "node server.js", "check": "node --check server.js && for f in public/js/*.js; do node --check $f; done" },
+  "engines": { "node": ">=18" }
+}

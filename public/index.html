@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sidechain Groovebox</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="css/app.css">
+</head><body>
+
+<div class="wrap">
+  <header>
+    <h1>SIDE<b>CHAIN</b></h1>
+    <nav class="nav"><a href="index.html" aria-current="page">Groovebox</a><a href="lab.html">Theory Lab</a></nav>
+    <div class="pos">BAR <span id="barN">1</span> · <span id="secN">Loop</span></div>
+  </header>
+
+  <div class="transport">
+    <button class="btn" id="play">▶ Play</button>
+    <button class="btn" id="gen">⚄ New track</button>
+    <button class="btn" id="arrange" aria-pressed="false">Arrange</button>
+    <button class="btn" id="midi">⤓ MIDI</button>
+    <div class="bpm"><strong id="bpmN">124</strong>BPM</div>
+  </div>
+
+  <div class="styles" id="styles"></div>
+
+  <div class="panel info">
+    <div class="field"><span class="lbl">Key</span><select id="key"></select><select id="scale"></select></div>
+    <div class="field"><span class="lbl">Chords</span><div class="prog" id="prog"></div></div>
+  </div>
+
+  <canvas id="scope" aria-label="Output waveform"></canvas>
+
+  <div class="panel grid" id="grid"></div>
+
+  <div class="panel macros" id="macros"></div>
+
+  <p class="tip">Tap a step to toggle it (drum steps cycle loud → soft → off). Tap a track name to mute it, ⟳ to reroll just that part. Arrange plays a 16-bar intro → build → drop. On iPhone, flip the ring/silent switch off if you hear nothing.</p>
+</div>
+
+<script src="js/midi.js"></script>
+<script src="js/groovebox.js"></script>
+</body></html>

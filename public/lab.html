@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sidechain Theory Lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/lab.css">
+</head><body>
+<div class="wrap">
+  <header>
+    <h1>SIDE<b>CHAIN</b></h1>
+    <nav class="nav"><a href="index.html">Groovebox</a><a href="lab.html" aria-current="page">Theory Lab</a></nav>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button class="chip" role="tab" data-tab="harmony" aria-pressed="true">Harmony</button>
+    <button class="chip" role="tab" data-tab="rhythm" aria-pressed="false">Rhythm</button>
+  </div>
+
+  <!-- ================= HARMONY ================= -->
+  <section id="tab-harmony" class="stack">
+    <div class="panel info">
+      <div class="field"><span class="lbl">Home key</span><select id="key"></select>
+        <select id="mode"><option value="major">major (bright)</option><option value="minor">minor (dark)</option></select></div>
+      <p class="tip">Start here: every key is a family of 7 chords. Learn the jobs, not the names.</p>
+    </div>
+
+    <div class="block">
+      <h2>The family: 7 chords in this key</h2>
+      <p class="tip">Each chord has a job. <b class="r-home">Home</b> feels resolved, <b class="r-away">Away</b> moves the story, <b class="r-tension">Tension</b> wants to go home. Tap to hear.</p>
+      <div class="chords" id="chords"></div>
+    </div>
+
+    <div class="block">
+      <h2>The circle: who's related to who</h2>
+      <p class="tip">Neighbours on the circle share almost all their notes, so moving between them sounds natural. The lit wedge is your key's family: majors on the outside, their sad twins (relative minors) inside. Keys right next to yours are the smoothest places to change key. Tap any chord.</p>
+      <div class="circle-wrap"><svg id="circle" viewBox="-160 -160 320 320" role="img" aria-label="Circle of fifths"></svg></div>
+    </div>
+
+    <div class="block">
+      <h2>Progressions by feeling</h2>
+      <p class="tip">The same few chords, ordered differently, tell different stories. ▶ to hear, → to load it into the Groovebox.</p>
+      <div class="list" id="progs"></div>
+    </div>
+
+    <div class="block">
+      <h2>Movement moves</h2>
+      <p class="tip">Ways to step outside the family for colour, shown in the major key of your home note.</p>
+      <div class="list" id="moves"></div>
+    </div>
+
+    <div class="block">
+      <h2>Why it sounds good: overtones</h2>
+      <p class="tip">Every note is secretly a stack of higher frequencies (overtones). When two notes share overtones they lock together; when their overtones land close but not equal they rub and "beat". That's consonance vs tension, and it's physics, not rules.</p>
+      <div class="ints" id="ints"></div>
+      <div class="panel ov">
+        <div class="ov-head"><strong id="ovName"></strong><span id="ovRatio" class="mono"></span><span id="ovFeel" class="dim"></span></div>
+        <div class="ov-svg"><svg id="ovsvg" viewBox="0 0 640 170" role="img" aria-label="Overtone comparison"></svg></div>
+        <div class="ov-foot"><span class="mono" id="ovShared"></span>
+          <span class="btns"><button class="btn" id="ovA">Note A</button><button class="btn" id="ovB">Note B</button><button class="btn" id="ovAB">Together</button></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= RHYTHM ================= -->
+  <section id="tab-rhythm" class="stack" hidden>
+    <div class="block">
+      <h2>Every drum has a job</h2>
+      <div class="jobs" id="jobs"></div>
+    </div>
+    <div class="block">
+      <h2>Beats by genre</h2>
+      <p class="tip">Pick a beat, watch it go round the clock. A beat is a loop, so seeing it as a circle shows its shape: even and driving, or lopsided and bouncy.</p>
+      <div class="beats" id="beats"></div>
+      <div class="panel beat-view">
+        <div class="clock-wrap"><svg id="clock" viewBox="-130 -130 260 260" role="img" aria-label="Beat clock"></svg></div>
+        <div class="beat-info">
+          <h3 id="bName"></h3>
+          <p class="dim mono" id="bTempo"></p>
+          <p id="bWhy"></p>
+          <div class="meters" id="bMeters"></div>
+          <div class="transport">
+            <button class="btn" id="bPlay">▶ Play</button>
+            <label class="mac" for="bSwing"><header><span class="lbl">Swing</span><output id="oSwing">0%</output></header><input type="range" id="bSwing" min="0" max="0.6" step="0.01" value="0"></label>
+            <label class="mac" for="bTempoR"><header><span class="lbl">Tempo</span><output id="oTempo"></output></header><input type="range" id="bTempoR" min="60" max="180" step="1"></label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+<script src="js/theory.js"></script>
+<script src="js/lab.js"></script>
+</body></html>

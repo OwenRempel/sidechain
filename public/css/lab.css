@@ -1,0 +1,57 @@
+/* Theory Lab additions — builds on app.css tokens */
+:root { --home: #2fc6d6; --away: #9d82ff; --tension: #ff5d3d; }
+.stack { display: flex; flex-direction: column; gap: 22px; }
+.tabs { display: flex; gap: 6px; }
+.block { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+h2 { margin: 0; font-size: 1.05rem; letter-spacing: .06em; text-wrap: balance; }
+h3 { margin: 0; font-size: 1.1rem; letter-spacing: .05em; }
+.tip { margin: 0; }
+.dim { color: var(--dim); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.r-home { color: var(--home); } .r-away { color: var(--away); } .r-tension { color: var(--tension); }
+
+.chords { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.chord { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; text-align: left;
+  background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--rc); border-radius: 6px; padding: 10px; }
+.chord .rn { font-family: var(--mono); font-size: 1.25rem; font-weight: 600; }
+.chord .nm { font-size: .8rem; color: var(--dim); font-family: var(--mono); }
+.chord .role { font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; color: var(--rc); }
+.chord .feel { font-size: .78rem; line-height: 1.3; }
+.chord:active, .chord.lit { background: var(--panel2); }
+
+.circle-wrap { max-width: 420px; width: 100%; margin: 0 auto; }
+#circle text { font-family: var(--mono); font-size: 11px; fill: var(--ink); pointer-events: none; text-anchor: middle; dominant-baseline: middle; }
+#circle text.rn { font-size: 8px; fill: var(--bg); font-weight: 600; }
+#circle path { stroke: var(--bg); stroke-width: 2; cursor: pointer; }
+
+.list { display: flex; flex-direction: column; gap: 8px; }
+.item { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.item .t { font-weight: 700; letter-spacing: .03em; }
+.item .seq { font-family: var(--mono); font-size: .82rem; color: var(--dim); grid-column: 1; overflow-wrap: anywhere; }
+.item .d { grid-column: 1 / -1; font-size: .82rem; color: var(--dim); line-height: 1.45; }
+.item .btns, .btns { display: flex; gap: 6px; grid-column: 2; grid-row: 1 / span 2; }
+.item .btn { padding: 8px 11px; }
+
+.ints { display: flex; flex-wrap: wrap; gap: 6px; }
+.ov { display: flex; flex-direction: column; gap: 8px; }
+.ov-head { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.ov-svg { width: 100%; overflow-x: auto; }
+.ov-svg svg { width: 100%; min-width: 480px; height: auto; display: block; }
+.ov-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: .82rem; }
+
+.jobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+.job { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--c); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; }
+.job b { letter-spacing: .06em; }
+.job span { font-size: .8rem; color: var(--dim); line-height: 1.4; }
+.beats { display: flex; flex-wrap: wrap; gap: 6px; }
+.beat-view { display: grid; grid-template-columns: minmax(0, 260px) 1fr; gap: 16px; align-items: center; }
+.clock-wrap { width: 100%; max-width: 260px; margin: 0 auto; }
+.beat-info { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.beat-info p { margin: 0; line-height: 1.5; font-size: .88rem; }
+.beat-info .transport .mac { flex: 1; min-width: 120px; }
+.meters { display: flex; flex-direction: column; gap: 6px; }
+.meter { display: grid; grid-template-columns: 96px 1fr; gap: 8px; align-items: center; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.meter div { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--clap); }
+@media (max-width: 600px) { .beat-view { grid-template-columns: 1fr; } }
