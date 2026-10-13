@@ -15,7 +15,7 @@ const Synth = (() => {
   // Grouped so the panel can show one short "what it does" line per group.
   const GROUPS = [
     { id: 'osc', name: 'Tone', tip: 'The raw sound. Sine is pure and soft, triangle hollow, square buzzy and retro, saw bright and rich. More voices plus spread = wider (the supersaw sound).' },
-    { id: 'layer', name: 'Layer', tip: 'A second tone stacked on top. An octave up adds sparkle, a 5th sounds bigger, like a power chord. Air mixes in a breathy hiss, like a flute or a whispered vocal.' },
+    { id: 'layer', name: 'Layer', tip: 'A second tone stacked on top. An octave up adds sparkle, a 5th sounds bigger, like a power chord. Sub adds a pure sine for weight (great on basses). Air mixes in a breathy hiss, like a flute or a whispered vocal.' },
     { id: 'bell', name: 'Bell (FM)', tip: 'One sine wobbling the pitch of another very fast makes metallic, bell-like overtones: the Marshmello chime. Ratio picks which overtones, Ring is how long they shimmer.' },
     { id: 'filter', name: 'Filter', tip: 'Shapes the brightness. Low-pass darkens, resonance adds a squelchy peak, and the envelope makes each note start bright then close down (that is a pluck). Drive pushes the sound into distortion for grit and bite.' },
     { id: 'amp', name: 'Envelope', tip: 'The shape of each note over time: how fast it starts, fades, holds and lets go. Short decay with no sustain = pluck. Slow attack = swell.' },
@@ -34,6 +34,7 @@ const Synth = (() => {
     { k: 'wave2', g: 'layer', label: 'Wave', type: 'choice', options: WAVES },
     { k: 'osc2', g: 'layer', label: 'Level', min: 0, max: 1, step: 0.01, fmt: pct },
     { k: 'semi2', g: 'layer', label: 'Interval', min: -12, max: 24, step: 1, fmt: v => INTERVAL[v] || signed(v) + ' st' },
+    { k: 'sub', g: 'layer', label: 'Sub', min: 0, max: 1, step: 0.01, fmt: v => (v ? pct(v) : 'off') },
     { k: 'noise', g: 'layer', label: 'Air', min: 0, max: 1, step: 0.01, fmt: v => (v ? pct(v) : 'off') },
     { k: 'fm', g: 'bell', label: 'Amount', min: 0, max: 1, step: 0.01, fmt: v => (v ? pct(v) : 'off') },
     { k: 'ratio', g: 'bell', label: 'Ratio', min: 0.5, max: 8, step: 0.5, fmt: v => v + ' : 1' },
@@ -61,7 +62,7 @@ const Synth = (() => {
 
   const BASE = {
     wave: 'sawtooth', voices: 1, detune: 0, oct: 0, blip: 0,
-    wave2: 'sine', osc2: 0, semi2: 12, noise: 0,
+    wave2: 'sine', osc2: 0, semi2: 12, noise: 0, sub: 0,
     fm: 0, ratio: 2, fmDecay: 0.3,
     ftype: 'lowpass', cut: 6000, res: 1, env: 0.3, fdec: 0.2, drive: 0,
     att: 0.005, dec: 0.3, sus: 0.6, rel: 0.15, vol: 0.8,
@@ -100,8 +101,49 @@ const Synth = (() => {
     { id: 'tri8', cat: 'retro', name: '8-bit triangle', who: 'NES, chiptune', p: P({ wave: 'triangle', cut: 12000, res: 0, env: 0, att: 0.002, dec: 0.1, sus: 0.85, rel: 0.04, vol: 0.7 }) },
     { id: 'arp', cat: 'retro', name: 'Synthwave arp', who: 'Synthwave, outrun', p: P({ wave: 'sawtooth', voices: 2, detune: 8, wave2: 'square', osc2: 0.3, semi2: 12, cut: 1400, res: 5, env: 0.7, fdec: 0.18, att: 0.002, dec: 0.2, sus: 0.2, rel: 0.15, vol: 1 }) },
     { id: 'softpad', cat: 'big', name: 'Soft pad lead', who: 'Ambient, chill, Matthew Parker', p: P({ wave: 'triangle', voices: 3, detune: 12, wave2: 'sine', osc2: 0.3, semi2: 12, noise: 0.03, cut: 3000, env: 0, att: 0.25, dec: 0.8, sus: 0.9, rel: 0.8, lfo: 'amp', lfoRate: 0.3, lfoDepth: 0.2, vol: 0.9, chorus: 0.5, width: 0.6 }) },
+
+    // Basses: kept mono-wide (width 0) so the low end stays solid. Sub = a plain sine on the note for weight.
+    { id: 'housebass', cat: 'bass', name: 'House bass', who: 'House, deep house', p: P({ width: 0, wave: 'sawtooth', voices: 2, att: 0.003, dec: 0.3, sus: 1, rel: 0.05, sub: 0.5, detune: 6, cut: 220, res: 6, env: 0.8, fdec: 0.24, vol: 0.8 }) },
+    { id: 'technobass', cat: 'bass', name: 'Techno rumble', who: 'Techno', p: P({ width: 0, wave: 'sawtooth', voices: 2, att: 0.003, dec: 0.3, sus: 1, rel: 0.05, sub: 0.5, detune: 4, cut: 160, res: 10, env: 0.7, fdec: 0.15, vol: 0.8 }) },
+    { id: 'trancebass', cat: 'bass', name: 'Rolling trance bass', who: 'Trance, psy', p: P({ width: 0, wave: 'sawtooth', voices: 2, att: 0.003, dec: 0.3, sus: 1, rel: 0.05, sub: 0.5, detune: 8, cut: 260, res: 4, env: 0.58, fdec: 0.21, vol: 0.8 }) },
+    { id: 'synthwavebass', cat: 'bass', name: 'Synthwave bass', who: 'Synthwave, outrun', p: P({ width: 0, wave: 'sawtooth', voices: 2, att: 0.003, dec: 0.3, sus: 1, rel: 0.05, sub: 0.5, detune: 10, cut: 300, res: 3, env: 0.42, fdec: 0.45, vol: 0.8 }) },
+    { id: 'wobblebass', cat: 'bass', name: 'Wobble bass', who: 'Dubstep (the Wobble knob moves it)', p: P({ width: 0, wave: 'sawtooth', voices: 2, att: 0.003, dec: 0.3, sus: 1, rel: 0.05, sub: 0.5, detune: 14, cut: 200, res: 12, env: 0.25, fdec: 0.6, vol: 0.8 }) },
+    { id: 'reesebass', cat: 'bass', name: 'Reese bass', who: 'Drum & bass, neuro', p: P({ width: 0, wave: 'sawtooth', voices: 2, att: 0.003, dec: 0.3, sus: 1, rel: 0.05, sub: 0.5, detune: 22, cut: 380, res: 5, env: 0.1, fdec: 0.9, drive: 0.2, vol: 1 }) },
+    { id: 'fbbass', cat: 'bass', name: 'Future bass sub', who: 'Marshmello, future bass', p: P({ width: 0, wave: 'sawtooth', voices: 2, att: 0.003, dec: 0.3, sus: 1, rel: 0.05, sub: 0.5, detune: 10, cut: 320, res: 3, env: 0.27, fdec: 0.6, vol: 0.8 }) },
+    { id: 'subbass', cat: 'bass', name: 'Pure sub', who: 'Trap, future bass, 808 feel', p: P({ width: 0, wave: 'sine', cut: 2000, res: 0, env: 0, att: 0.005, dec: 0.3, sus: 1, rel: 0.08, drive: 0.15, vol: 1 }) },
+    { id: 'acidbass', cat: 'bass', name: 'Acid bass', who: 'Acid house, 303', p: P({ width: 0, wave: 'sawtooth', sub: 0.3, cut: 300, res: 15, env: 1, fdec: 0.25, att: 0.003, dec: 0.2, sus: 0.6, rel: 0.05, vol: 0.75, mono: 'mono', glide: 0.06 }) },
+    { id: 'pluckbass', cat: 'bass', name: 'Pluck bass', who: 'Glitch-hop, TheFatRat', p: P({ width: 0, wave: 'sawtooth', voices: 2, att: 0.003, dec: 0.3, sus: 1, rel: 0.05, sub: 0.5, sus: 0, dec: 0.25, detune: 8, cut: 400, res: 4, env: 0.9, fdec: 0.1, vol: 0.85 }) },
+    { id: 'growlbass', cat: 'bass', name: 'Growl bass', who: 'Dubstep, riddim', p: P({ width: 0, wave: 'sawtooth', voices: 2, att: 0.003, dec: 0.3, sus: 1, rel: 0.05, sub: 0.5, voices: 1, wave2: 'square', osc2: 0.4, semi2: 0, fm: 0.5, ratio: 1, fmDecay: 2, cut: 700, res: 8, env: 0.3, drive: 0.6, lfo: 'filter', lfoRate: 3, lfoDepth: 0.6, vol: 0.7 }) },
+
+    // Chords: the Groovebox plays one voice per chord note.
+    { id: 'fbchords', cat: 'chords', name: 'Future bass chords', who: 'Marshmello (pumped by the kick)', p: P({ wave: 'sawtooth', voices: 5, detune: 22, cut: 3200, res: 1, env: 0.1, att: 0.01, dec: 0.3, sus: 0.85, rel: 0.25, width: 0.9, chorus: 0.2, vol: 0.55 }) },
+    { id: 'housestab', cat: 'chords', name: 'House stab', who: 'House, deep house', p: P({ wave: 'sawtooth', voices: 2, detune: 9, res: 1, env: 0, cut: 1600, res: 3, env: 0.4, fdec: 0.15, att: 0.01, dec: 0.3, sus: 0.4, rel: 0.2, vol: 0.6 }) },
+    { id: 'technostab', cat: 'chords', name: 'Dub techno stab', who: 'Techno, dub techno', p: P({ wave: 'sawtooth', voices: 2, detune: 9, res: 1, env: 0, cut: 900, res: 6, env: 0.6, fdec: 0.12, att: 0.005, dec: 0.2, sus: 0.2, rel: 0.15, vol: 0.8 }) },
+    { id: 'trancepad', cat: 'chords', name: 'Trance pad', who: 'Trance, breakdowns', p: P({ wave: 'sawtooth', voices: 2, detune: 9, res: 1, env: 0, voices: 5, detune: 20, cut: 2200, att: 0.3, dec: 1, sus: 1, rel: 0.6, width: 0.8, chorus: 0.3, vol: 0.7 }) },
+    { id: 'synthwavepad', cat: 'chords', name: 'Synthwave pad', who: 'Synthwave, 80s', p: P({ wave: 'sawtooth', voices: 2, detune: 9, res: 1, env: 0, cut: 1800, att: 0.3, dec: 1, sus: 1, rel: 0.6, chorus: 0.5, vol: 0.75 }) },
+    { id: 'darkpad', cat: 'chords', name: 'Dark pad', who: 'Dubstep, cinematic', p: P({ wave: 'sawtooth', voices: 2, detune: 9, res: 1, env: 0, cut: 1500, att: 0.35, dec: 1, sus: 1, rel: 0.6, vol: 0.75 }) },
+    { id: 'dnbpad', cat: 'chords', name: 'Airy pad', who: 'Liquid drum & bass, chill', p: P({ wave: 'sawtooth', voices: 2, detune: 9, res: 1, env: 0, wave: 'triangle', cut: 2000, noise: 0.04, att: 0.3, dec: 1, sus: 1, rel: 0.6, chorus: 0.4, width: 0.7, vol: 0.8 }) },
+    { id: 'organ', cat: 'chords', name: 'House organ', who: '90s house, gospel chords', p: P({ wave: 'sine', wave2: 'sine', osc2: 0.5, semi2: 12, fm: 0.1, ratio: 3, fmDecay: 0.1, cut: 6000, env: 0, att: 0.005, dec: 0.3, sus: 1, rel: 0.08, vol: 0.6 }) },
+    { id: 'pianochords', cat: 'chords', name: 'Piano-ish chords', who: 'Matthew Parker, cinematic', p: P({ wave: 'triangle', wave2: 'sine', osc2: 0.3, semi2: 12, fm: 0.15, ratio: 1, fmDecay: 0.6, cut: 4000, env: 0.3, fdec: 0.5, att: 0.003, dec: 1.2, sus: 0.15, rel: 0.5, vol: 0.65 }) },
   ];
-  const CATS = [['plucks', 'Plucks & keys'], ['leads', 'Leads'], ['bells', 'Bells & mallets'], ['big', 'Big & wide'], ['retro', 'Retro & chip']];
+  const CATS = [['plucks', 'Plucks & keys'], ['leads', 'Leads'], ['bells', 'Bells & mallets'], ['big', 'Big & wide'], ['retro', 'Retro & chip'], ['bass', 'Basses'], ['chords', 'Chords & pads']];
+  // The three melodic tracks that share this synth. keys = where each keeps its sound in the song state.
+  const PARTS = [
+    { id: 'lead', name: 'Lead', cat: null, keys: ['synth', 'synthId'] },
+    { id: 'bass', name: 'Bass', cat: 'bass', keys: ['bassSynth', 'bassSynthId'] },
+    { id: 'pad', name: 'Chords', cat: 'chords', keys: ['padSynth', 'padSynthId'] },
+  ];
+  const part = id => PARTS.find(x => x.id === id) || PARTS[0];
+  // One part's sound in the song state, shaped like { synth, synthId } for the panel.
+  const partView = (state, id) => {
+    const [k, kid] = part(id).keys;
+    return { part: part(id).id, get synth() { return state[k]; }, set synth(v) { state[k] = v; }, get synthId() { return state[kid]; }, set synthId(v) { state[kid] = v; } };
+  };
+  // Preset categories in the order a part's menu shows them: its own first, the other parts' last.
+  const catsFor = id => {
+    const own = part(id).cat, other = c => c !== own && PARTS.some(x => x.cat === c);
+    return [...CATS.filter(c => c[0] === own), ...CATS.filter(c => c[0] !== own && !other(c[0])), ...CATS.filter(c => other(c[0]))];
+  };
   const byId = id => PRESETS.find(x => x.id === id);
 
   // Fill missing keys and clamp everything into range, so old saves and hand-edited presets stay playable.
@@ -156,6 +198,7 @@ const Synth = (() => {
     }
     v /= Math.sqrt(n);
     if (p.osc2 > 0) v += p.osc2 * WAVE_FN[p.wave2](f0 * Math.pow(2, p.semi2 / 12) * t);
+    if (p.sub > 0) v += p.sub * Math.sin(2 * Math.PI * f0 * t);
     if (p.drive > 0) { const k = 1 + p.drive * 8; v = Math.tanh(k * v) / Math.tanh(k); }
     return v;
   }
@@ -192,12 +235,12 @@ const Synth = (() => {
   const brightWord = c => (c < 600 ? 'Dark' : c < 2500 ? 'Warm' : c < 7000 ? 'Bright' : 'Very bright');
   function describe(p) {
     const wn = Object.fromEntries(WAVES)[p.wave], w2 = Object.fromEntries(WAVES)[p.wave2];
-    const tone = `${wn}${p.voices > 1 ? ` × ${p.voices} voices` : ''}${p.osc2 > 0.02 ? ` + ${w2} ${INTERVAL[p.semi2] || p.semi2 + ' st'}` : ''}${p.fm > 0.02 ? ' + bell shimmer' : ''}${p.noise > 0.02 ? ' + air' : ''}${p.chorus > 0.05 ? ' · chorus' : ''}${p.mono === 'mono' ? ' · mono' + (p.glide > 0.005 ? ' glide' : '') : ''}`;
+    const tone = `${wn}${p.voices > 1 ? ` × ${p.voices} voices` : ''}${p.osc2 > 0.02 ? ` + ${w2} ${INTERVAL[p.semi2] || p.semi2 + ' st'}` : ''}${p.fm > 0.02 ? ' + bell shimmer' : ''}${p.sub > 0.02 ? ' + sub' : ''}${p.noise > 0.02 ? ' + air' : ''}${p.chorus > 0.05 ? ' · chorus' : ''}${p.mono === 'mono' ? ' · mono' + (p.glide > 0.005 ? ' glide' : '') : ''}`;
     const shape = p.att > 0.1 ? 'Swell: fades in slowly' : p.sus < 0.1 ? 'Pluck: hits, then fades away' : p.sus > 0.75 ? 'Holds steady while the note is on' : 'Hits, then settles to a lower level';
     const move = p.lfo === 'off' || p.lfoDepth < 0.01 ? '' : ` · ${{ pitch: 'Vibrato', filter: 'Filter wobble', amp: 'Tremolo' }[p.lfo]} at ${p.lfoRate.toFixed(1)} Hz`;
     return { tone, bright: `${brightWord(p.cut)}${p.res > 6 ? ', with a resonant peak' : ''}${p.drive > 0.15 ? ', driven' : ''}${p.env > 0.3 ? ', opens on each hit' : ''}`, shape: shape + move };
   }
 
-  return { WAVES, FILTERS, LFO_TARGETS, MODES, GROUPS, PARAMS, BASE, PRESETS, CATS, MACROS, byId, normalize, toSlider, fromSlider, same, applyMacro, toneAt, waveShape, spectrum, envAt, describe };
+  return { WAVES, FILTERS, LFO_TARGETS, MODES, GROUPS, PARAMS, BASE, PRESETS, CATS, PARTS, part, partView, catsFor, MACROS, byId, normalize, toSlider, fromSlider, same, applyMacro, toneAt, waveShape, spectrum, envAt, describe };
 })();
 if (typeof module !== 'undefined') module.exports = Synth; // lets node --test require it; browsers ignore this

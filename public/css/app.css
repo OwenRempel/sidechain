@@ -147,3 +147,4 @@ body{margin:0}
 .btn.rec.on{background:linear-gradient(90deg,color-mix(in srgb,var(--kick) 35%,var(--panel2)) calc(var(--p)*100%),var(--panel2) 0);color:var(--ink)}
 .dock-bar #recMsg:empty{display:none}
 .dock-bar #recMsg:not(:empty)~.tip{display:none}
+.seg.part{margin:2px 0 6px}.seg.part button[aria-pressed="true"]{background:var(--c);border-color:var(--c)}

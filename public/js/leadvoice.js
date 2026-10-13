@@ -36,6 +36,7 @@ const startLead = (() => {
     const main = [];
     for (let k = 0; k < n; k++) { const s = n > 1 ? k / (n - 1) * 2 - 1 : 0; main.push(osc(p.wave, 1, s * p.detune, 1, s * width)); }
     if (p.osc2 > 0) osc(p.wave2, Math.pow(2, p.semi2 / 12), 0, p.osc2 * Math.sqrt(n), 0);
+    if (p.sub > 0) osc('sine', 1, 0, p.sub * 1.2 * Math.sqrt(n), 0);   // plain sine on the note, for weight
     if (p.noise > 0) {   // "air": noise band-passed around the note so it follows the pitch
       const s = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
       s.buffer = noiseBuf(ctx); s.loop = true; bp.type = 'bandpass'; bp.frequency.value = Math.min(12000, f * 3); bp.Q.value = 0.7;

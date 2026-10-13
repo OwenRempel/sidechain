@@ -29,43 +29,43 @@ function arp(){
 const base=()=>({kick:D16(),clap:D16(),hat:D16(),ohat:D16(),bass:M16(),lead:M16(),pad:D16()});
 
 const STYLES={
-  house:{lead:'pluck',label:'House',bpm:124,scales:['minor','dorian'],progs:[[0,5,2,6],[0,3,0,4],[0,6,5,6],[3,4,0,0]],swing:.3,wobble:0,space:.3,echo:.2,
+  house:{lead:'pluck',bass:'housebass',chords:'housestab',label:'House',bpm:124,scales:['minor','dorian'],progs:[[0,5,2,6],[0,3,0,4],[0,6,5,6],[3,4,0,0]],swing:.3,wobble:0,space:.3,echo:.2,
     sound:{kickDecay:.45,kickEnd:50,bassWave:'sawtooth',bassDetune:6,bassCut:220,bassEnv:1400,bassDecay:.08,bassQ:6,padCut:1600},
     gen(){const p=base();at(p.kick,[0,4,8,12]);at(p.clap,[4,12]);at(p.ohat,[2,6,10,14],.8);
       for(let i=0;i<16;i++)if(chance(.55))p.hat[i]=i%2?.5:.3; if(chance(.4))p.clap[15]=.5;
       pick([[2,6,10,14],[2,3,6,10,11,14],[0,3,6,9,12,14],[2,5,8,10,13]]).forEach(i=>p.bass[i]=note(pick([0,0,0,7,4]),1,i%4===2?1:.8));
       euclid(ri(3,5),16,ri(0,2)).forEach(i=>p.lead[i]=note(pick(CT),1,chance(.5)?1:.7));
       if(chance(.5))p.pad[0]=1;else at(p.pad,pick([[3,10],[2,6,10,14],[0,6,12]]));return p}},
-  techno:{lead:'acid',label:'Techno',bpm:130,scales:['phrygian','minor'],progs:[[0,0,0,0],[0,0,5,0],[0,1,0,1]],swing:.08,wobble:0,space:.25,echo:.35,
+  techno:{lead:'acid',bass:'technobass',chords:'technostab',label:'Techno',bpm:130,scales:['phrygian','minor'],progs:[[0,0,0,0],[0,0,5,0],[0,1,0,1]],swing:.08,wobble:0,space:.25,echo:.35,
     sound:{kickDecay:.55,kickEnd:42,bassWave:'sawtooth',bassDetune:4,bassCut:160,bassEnv:900,bassDecay:.05,bassQ:10,padCut:900},
     gen(){const p=base();at(p.kick,[0,4,8,12]);if(chance(.6))at(p.clap,[4,12]);at(p.ohat,[2,6,10,14],.6);
       for(let i=0;i<16;i++)p.hat[i]=i%4===2?.8:i%2?.5:.3;
       for(let i=0;i<16;i++)if(i%4&&chance(.85))p.bass[i]=note(0,1,i%4===2?1:.7);
       euclid(ri(3,5),16,ri(0,3)).forEach(i=>p.lead[i]=note(pick([0,0,2,7]),1,.9));
       if(chance(.5))at(p.pad,euclid(3,16,ri(0,2)));return p}},
-  trance:{lead:'supersaw',label:'Trance',bpm:138,scales:['minor'],progs:[[0,5,2,6],[5,6,0,0],[0,5,3,4]],swing:0,wobble:0,space:.45,echo:.35,
+  trance:{lead:'supersaw',bass:'trancebass',chords:'trancepad',label:'Trance',bpm:138,scales:['minor'],progs:[[0,5,2,6],[5,6,0,0],[0,5,3,4]],swing:0,wobble:0,space:.45,echo:.35,
     sound:{kickDecay:.4,kickEnd:50,bassWave:'sawtooth',bassDetune:8,bassCut:260,bassEnv:1200,bassDecay:.07,bassQ:4,padCut:2200},
     gen(){const p=base();at(p.kick,[0,4,8,12]);at(p.clap,[4,12]);at(p.ohat,[2,6,10,14],.8);
       for(let i=0;i<16;i++)if(i%2&&chance(.5))p.hat[i]=.3;
       for(let i=0;i<16;i++)if(i%4)p.bass[i]=note(0,1,i%4===2?1:.75);
       p.lead=arp();p.pad[0]=1;return p}},
-  synthwave:{lead:'brass',label:'Synthwave',bpm:100,scales:['minor'],progs:[[0,5,2,6],[0,6,5,6],[5,6,0,0]],swing:0,wobble:0,space:.45,echo:.4,
+  synthwave:{lead:'brass',bass:'synthwavebass',chords:'synthwavepad',label:'Synthwave',bpm:100,scales:['minor'],progs:[[0,5,2,6],[0,6,5,6],[5,6,0,0]],swing:0,wobble:0,space:.45,echo:.4,
     sound:{kickDecay:.5,kickEnd:48,bassWave:'sawtooth',bassDetune:10,bassCut:300,bassEnv:1000,bassDecay:.15,bassQ:3,padCut:1800},
     gen(){const p=base();at(p.kick,chance(.5)?[0,8,10]:[0,8]);at(p.clap,[4,12]);for(let i=0;i<16;i+=2)p.hat[i]=i%4?.6:.4;if(chance(.5))p.ohat[14]=.7;
       for(let i=0;i<16;i+=2)p.bass[i]=note(i%4?7:0,1,.9);p.lead=melody(ri(5,7));p.pad[0]=1;return p}},
-  dubstep:{lead:'squarelead',label:'Dubstep',bpm:140,scales:['phrygian','minor'],progs:[[0,0,5,6],[0,0,0,0],[0,5,0,6]],swing:0,wobble:.65,space:.3,echo:.25,
+  dubstep:{lead:'squarelead',bass:'wobblebass',chords:'darkpad',label:'Dubstep',bpm:140,scales:['phrygian','minor'],progs:[[0,0,5,6],[0,0,0,0],[0,5,0,6]],swing:0,wobble:.65,space:.3,echo:.25,
     sound:{kickDecay:.5,kickEnd:45,bassWave:'sawtooth',bassDetune:14,bassCut:200,bassEnv:400,bassDecay:.2,bassQ:12,padCut:1500},
     gen(){const p=base();at(p.kick,[0]);if(chance(.6))p.kick[pick([10,11,3])]=.9;p.clap[8]=1;for(let i=0;i<16;i+=2)if(chance(.7))p.hat[i]=.4;if(chance(.4))p.ohat[6]=.6;
       pick([[[0,6],[6,2],[8,6],[14,2]],[[0,8],[8,4],[12,4]],[[0,3],[3,3],[6,2],[8,8]],[[0,4],[4,4],[8,4],[12,4]]])
         .forEach(([s,l])=>p.bass[s]=note(pick([0,0,1,-2,4]),l,1,pick([1,2,3,4,6])));
       p.lead=melody(ri(2,4),4,0,7);p.pad[0]=1;return p}},
-  dnb:{lead:'flute',label:'Drum & Bass',bpm:172,scales:['minor','dorian'],progs:[[0,0,5,6],[0,5,3,4],[0,0,6,6]],swing:0,wobble:0,space:.35,echo:.3,
+  dnb:{lead:'flute',bass:'reesebass',chords:'dnbpad',label:'Drum & Bass',bpm:172,scales:['minor','dorian'],progs:[[0,0,5,6],[0,5,3,4],[0,0,6,6]],swing:0,wobble:0,space:.35,echo:.3,
     sound:{kickDecay:.35,kickEnd:55,bassWave:'sawtooth',bassDetune:22,bassCut:380,bassEnv:300,bassDecay:.3,bassQ:5,padCut:2000},
     gen(){const p=base();at(p.kick,chance(.5)?[0,10]:[0,7,10]);at(p.clap,[4,12]);if(chance(.5))p.clap[pick([7,9,15])]=.4;
       for(let i=0;i<16;i++)p.hat[i]=i%2?(chance(.4)?.3:0):.6;if(chance(.5))p.ohat[14]=.7;
       pick([[[0,6],[6,4],[10,6]],[[0,10],[10,6]],[[0,4],[6,4],[10,4],[14,2]]]).forEach(([s,l])=>p.bass[s]=note(pick([0,0,5,-2]),l,1));
       p.lead=melody(ri(3,5),4,0,9);p.pad[0]=1;return p}},
-  futurebass:{lead:'chime',label:'Future Bass',bpm:128,scales:['major'],progs:[[3,4,5,0],[0,4,5,3],[5,3,0,4],[3,4,2,5]],swing:.12,wobble:0,space:.5,echo:.35,
+  futurebass:{lead:'chime',bass:'fbbass',chords:'fbchords',label:'Future Bass',bpm:128,scales:['major'],progs:[[3,4,5,0],[0,4,5,3],[5,3,0,4],[3,4,2,5]],swing:.12,wobble:0,space:.5,echo:.35,
     // Mello x TFR: half-time drums, pumping supersaw chord stabs, FM "chime" lead with a pitch blip
     sound:{kickDecay:.45,kickEnd:50,bassWave:'sawtooth',bassDetune:10,bassCut:320,bassEnv:700,bassDecay:.2,bassQ:3,padCut:3200},
     gen(){const p=base();at(p.kick,pick([[0,10],[0,3,10],[0,7,10]]));p.clap[8]=1;if(chance(.4))p.clap[15]=.4;
@@ -77,16 +77,21 @@ const STYLES={
 let S;
 const defaultSections=()=>Theory.ARRANGEMENT.map(s=>({...s,tracks:[...s.tracks]}));
 const presetSynth=id=>Synth.normalize((Synth.byId(id)||Synth.PRESETS[0]).p);
-// keepSynth: New track keeps the lead sound you dialled in; picking a style loads that style's lead preset.
+// The style's starting sound for each synth part (lead, bass, chords).
+const styleSound=(st,part)=>st[{lead:'lead',bass:'bass',pad:'chords'}[part]];
+function partSounds(st,keep){
+  const o={};Synth.PARTS.forEach(({id,keys:[k,kid]})=>{if(keep&&S?.[k]){o[k]=S[k];o[kid]=S[kid]}else{o[kid]=styleSound(st,id);o[k]=presetSynth(o[kid])}});return o;
+}
+// keepSynth: New track keeps the sounds you dialled in; picking a style loads that style's presets.
 function fresh(style,key,keepSynth){
-  const st=STYLES[style],synth=keepSynth&&S?.synth?{synth:S.synth,synthId:S.synthId}:{synth:presetSynth(st.lead),synthId:st.lead};
+  const st=STYLES[style],synth=partSounds(st,keepSynth);
   return {style,key:key??pick([0,2,5,7,9,4]),scale:pick(st.scales),prog:pick(st.progs).slice(),bpm:st.bpm,swing:st.swing,cutoff:1,wobble:st.wobble,
     space:st.space,echo:st.echo,vol:.8,arrange:S?.arrange||false,sections:S?.sections||defaultSections(),sound:{...st.sound},...synth,pat:st.gen(),mute:S?.mute||{}};
 }
 try{const s=JSON.parse(localStorage.getItem('sidechain-v1'));if(s&&s.pat&&STYLES[s.style])S=s}catch(e){}
 if(!S)S=fresh('futurebass',0);
 if(!S.sections)S.sections=defaultSections();
-if(!S.synth){S.synthId=STYLES[S.style].lead;S.synth=presetSynth(S.synthId)}else S.synth=Synth.normalize(S.synth);
+Synth.PARTS.forEach(({id,keys:[k,kid]})=>{if(!S[k]){S[kid]=styleSound(STYLES[S.style],id);S[k]=presetSynth(S[kid])}else S[k]=Synth.normalize(S[k])});
 try{const h=JSON.parse(localStorage.getItem('sidechain-handoff'));if(h){Object.assign(S,h);localStorage.removeItem('sidechain-handoff')}}catch(e){}
 function save(){try{localStorage.setItem('sidechain-v1',JSON.stringify(S))}catch(e){}}
 
@@ -95,11 +100,12 @@ const semis=d=>{const sc=SCALES[S.scale],o=Math.floor(d/7),i=((d%7)+7)%7;return 
 const mtof=m=>440*Math.pow(2,(m-69)/12);
 const bassBase=()=>36+(S.key>=7?S.key-12:S.key);
 const leadNote=d=>bassBase()+36+12*S.synth.oct+semis(d);
+const bassNote=d=>bassBase()+12*S.bassSynth.oct+semis(d);
 function chordName(r){const rs=semis(r),t=semis(r+2)-rs,f=semis(r+4)-rs;return NOTE[((S.key+rs)%12+12)%12]+(t===3?(f===6?'°':'m'):'')}
 function roman(r){const rs=semis(r),t=semis(r+2)-rs,f=semis(r+4)-rs,n=['I','II','III','IV','V','VI','VII'][((r%7)+7)%7];return t===3?n.toLowerCase()+(f===6?'°':''):n}
 
 /* ---------- audio engine ---------- */
-let leadAn,ctx,masterGain,masterFilter,duck,drumBus,musicBus,leadOut,padOut,revIn,delIn,delay,analyser,noiseBuf,ohatG=null;
+let leadAn,bassOut,partAn={},ctx,masterGain,masterFilter,duck,drumBus,musicBus,leadOut,padOut,revIn,delIn,delay,analyser,noiseBuf,ohatG=null;
 function initAudio(){
   ctx=new (window.AudioContext||window.webkitAudioContext)();
   masterGain=ctx.createGain();masterGain.gain.value=S.vol;
@@ -119,8 +125,10 @@ function initAudio(){
   const fb=ctx.createGain();fb.gain.value=.38;const dlp=ctx.createBiquadFilter();dlp.frequency.value=2800;
   delIn.connect(delay);delay.connect(dlp);dlp.connect(fb).connect(delay);dlp.connect(duck);
   leadOut=ctx.createGain();leadOut.connect(musicBus);leadOut.connect(delIn);leadOut.connect(revIn);
-  leadAn=ctx.createAnalyser();leadAn.fftSize=2048;leadOut.connect(leadAn); // feeds the synth panel's live wave
+  bassOut=ctx.createGain();bassOut.gain.value=2;bassOut.connect(musicBus);
   padOut=ctx.createGain();padOut.gain.value=.7;padOut.connect(musicBus);padOut.connect(revIn);
+  // analysers feed the synth panel's live wave
+  [['lead',leadOut],['bass',bassOut],['pad',padOut]].forEach(([id,n])=>{const a=ctx.createAnalyser();a.fftSize=2048;n.connect(a);partAn[id]=a});leadAn=partAn.lead;
   noiseBuf=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate);const nd=noiseBuf.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=R()*2-1;
 }
 const cutHz=()=>150*Math.pow(20000/150,S.cutoff);
@@ -151,32 +159,22 @@ function hat(t,v,open){
   const g=ctx.createGain(),dec=open?.38:.045;g.gain.setValueAtTime(v*.32,t);g.gain.exponentialRampToValueAtTime(.001,t+dec);
   s.connect(hp).connect(g).connect(drumBus);if(open)ohatG=g;
 }
-function bass(t,f,dur,v,w){
-  const sd=S.sound,g=ctx.createGain(),lp=ctx.createBiquadFilter(),end=t+dur+.06;lp.type='lowpass';lp.Q.value=sd.bassQ;
-  [-1,1].forEach(s=>{const o=ctx.createOscillator();o.type=sd.bassWave;o.frequency.value=f;o.detune.value=s*sd.bassDetune;
-    const og=ctx.createGain();og.gain.value=.45;o.connect(og).connect(lp);o.start(t);o.stop(end)});
-  const sub=ctx.createOscillator(),sg=ctx.createGain();sub.frequency.value=f;sg.gain.value=.55;sub.connect(sg).connect(g);sub.start(t);sub.stop(end);
-  const cut=sd.bassCut+S.wobble*1100;
-  lp.frequency.setValueAtTime(cut+sd.bassEnv,t);lp.frequency.setTargetAtTime(cut,t+.005,sd.bassDecay);
-  if(S.wobble>.01){const l=ctx.createOscillator(),lg=ctx.createGain();l.frequency.value=S.bpm/60*(w||2);lg.gain.value=S.wobble*1600;
-    l.connect(lg).connect(lp.frequency);l.start(t);l.stop(end)}
-  lp.connect(g);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v*.42,t+.005);g.gain.setValueAtTime(v*.42,t+dur);g.gain.linearRampToValueAtTime(0,t+dur+.05);
-  g.connect(musicBus);
-}
-// Lead notes come from leadvoice.js, built from S.synth (the Lead synth panel).
+// Bass, lead and chords all play through leadvoice.js, each with its own sound (S.bassSynth, S.synth, S.padSynth).
 // Mono mode: a note that starts as the last one ends (or overlaps it) glides on from it instead of restarting.
-let lastLeadF=440,monoLead=null;
-function lead(t,f,dur,v){
-  lastLeadF=f;const p=S.synth;
-  if(p.mono==='mono'&&monoLead&&monoLead.p===p&&monoLead.end>t-.06&&monoLead.start<t){monoLead.v.glide(f,t,p.glide);monoLead.v.release(t+dur);monoLead.end=t+dur;return}
-  const v1=startLead(ctx,leadOut,p,t,f,v);v1.release(t+dur);monoLead=p.mono==='mono'?{v:v1,p,start:t,end:t+dur}:null;
+const lastHz={lead:440,bass:110,pad:262},monoV={};
+function voice(part,dest,p,t,f,dur,v){
+  lastHz[part]=f;const m=monoV[part];
+  if(p.mono==='mono'&&m&&m.src===p.src&&m.end>t-.06&&m.start<t){m.v.glide(f,t,p.glide);m.v.release(t+dur);m.end=t+dur;return}
+  const v1=startLead(ctx,dest,p,t,f,v);v1.release(t+dur);monoV[part]=p.mono==='mono'?{v:v1,src:p.src,start:t,end:t+dur}:null;
 }
-function pad(t,freqs,dur){
-  const g=ctx.createGain(),lp=ctx.createBiquadFilter(),a=dur<.4?.01:Math.min(.35,dur*.25),end=t+dur+.7;lp.frequency.value=S.sound.padCut;
-  freqs.forEach(f=>[-9,9].forEach(dt=>{const o=ctx.createOscillator();o.type='sawtooth';o.frequency.value=f;o.detune.value=dt;o.connect(lp);o.start(t);o.stop(end)}));
-  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.06,t+a);g.gain.setValueAtTime(.06,t+dur);g.gain.linearRampToValueAtTime(0,t+dur+.6);
-  lp.connect(g).connect(padOut);
+function bass(t,f,dur,v,w){
+  let p=S.bassSynth;
+  // the Wobble knob: a filter LFO locked to the tempo, w = rate multiplier per note
+  if(S.wobble>.01){const cut=p.cut+S.wobble*1100;p={...p,cut,lfo:'filter',lfoRate:S.bpm/60*(w||2),lfoDepth:S.wobble*1600/(cut*.9)}}
+  voice('bass',bassOut,{...p,src:S.bassSynth},t,f,dur,v);
 }
+function lead(t,f,dur,v){voice('lead',leadOut,{...S.synth,src:S.synth},t,f,dur,v)}
+function pad(t,freqs,dur){const p=S.padSynth,k=Math.pow(2,p.oct);lastHz.pad=freqs[0]*k;freqs.forEach(f=>startLead(ctx,padOut,p,t,f*k,1).release(t+dur))}
 const chordFreqs=r=>[0,2,4].map(k=>mtof(bassBase()+24+semis(r+k)));
 
 /* ---------- arrangement + scheduler ---------- */
@@ -197,7 +195,7 @@ function scheduleStep(st,t,bar){
   if(sec?.roll&&!S.mute.clap){if(st>=8||st%2===0)clap(t,.35+st/24)}
   else if(on('clap')&&P.clap[st])clap(t,P.clap[st]);
   if(on('ohat')&&P.ohat[st])hat(t,P.ohat[st],true);else if(on('hat')&&P.hat[st])hat(t,P.hat[st],false);
-  const b=P.bass[st];if(b&&on('bass'))bass(t,mtof(bassBase()+semis(r+b.d)),b.len*sd*.92,b.v,b.w);
+  const b=P.bass[st];if(b&&on('bass'))bass(t,mtof(bassNote(r+b.d)),b.len*sd*.92,b.v,b.w);
   const l=P.lead[st];if(l&&on('lead'))lead(t,mtof(leadNote(r+l.d)),l.len*sd*.9,l.v);
   if(P.pad[st]&&on('pad')){let nx=st+1;while(nx<16&&!P.pad[nx])nx++;pad(t,chordFreqs(r),(nx-st)*sd*.97)}
   q.push({st,bar,t,sec:sec?.name});
@@ -312,20 +310,29 @@ function syncTop(){
   $('#arr').classList.toggle('off',!S.arrange);
 }
 function ensureAudio(){if(!ctx)initAudio();ctx.resume();return ctx.currentTime+.03}
-function audition(){if(playing)return;const t=ensureAudio();lead(t,mtof(leadNote(S.prog[0])),.32,1)}
-// Try: a short phrase over the first chord, so you hear the sound in context.
+/* synth panel (synthpanel.js) for the part picked in it: lead, bass or chords. The pop-out Synth page edits the same sounds through localStorage */
+const PART_KEY='sidechain-synth-part';
+let synPart='lead';try{synPart=Synth.part(localStorage.getItem(PART_KEY)).id}catch(e){}
+function audition(){if(playing)return;const t=ensureAudio(),r=S.prog[0];
+  if(synPart==='bass')bass(t,mtof(bassNote(r)),.4,1,2);else if(synPart==='pad')pad(t,chordFreqs(r),.6);else lead(t,mtof(leadNote(r)),.32,1)}
+// Try: a short phrase over the first chords, so you hear the sound in context.
 function tryPhrase(){if(playing)return;const t=ensureAudio(),r=S.prog[0],sd=60/S.bpm/4;
+  if(synPart==='bass'){S.prog.forEach((c,b)=>[[0,0,3],[3,7,1],[6,0,2],[10,0,2],[12,4,3]].forEach(([st,d,len])=>bass(t+(b*16+st)*sd*.5,mtof(bassNote(c+d)),len*sd*.5,1,2)));return}
+  if(synPart==='pad'){S.prog.forEach((c,b)=>pad(t+b*sd*8,chordFreqs(c),sd*7.5));return}
   pad(t,chordFreqs(r),sd*14);[[0,0,2],[2,2,1],[4,3,1],[7,4,2],[4,6,2],[2,8,1],[0,9,5]].forEach(([d,st,len])=>lead(t+st*sd*1.5,mtof(leadNote(r+d)),len*sd*1.4,st?.85:1))}
-/* lead synth panel (synthpanel.js); the pop-out Synth page edits the same S.synth through localStorage */
-const synthPanel=createSynthPanel($('#synth'),{model:()=>S,persist:()=>save(),audition,tryPhrase,noteHz:()=>mtof(leadNote(S.prog[0])),
-  analyser:()=>leadAn||null,lastHz:()=>lastLeadF,sampleRate:()=>ctx?ctx.sampleRate:44100});
+const partHz=()=>{const r=S.prog[0];return synPart==='bass'?mtof(bassNote(r)):synPart==='pad'?chordFreqs(r)[0]*Math.pow(2,S.padSynth.oct):mtof(leadNote(r))};
+const synthPanel=createSynthPanel($('#synth'),{model:()=>Synth.partView(S,synPart),persist:()=>save(),audition,tryPhrase,noteHz:partHz,
+  analyser:()=>partAn[synPart]||null,lastHz:()=>lastHz[synPart],sampleRate:()=>ctx?ctx.sampleRate:44100,
+  part:()=>synPart,setPart:id=>{synPart=Synth.part(id).id;try{localStorage.setItem(PART_KEY,synPart)}catch(e){}}});
 const renderSynth=()=>synthPanel.render();
 $('#synPop').onclick=()=>{save();window.open('synth.html','sidechain-synth')};
 window.addEventListener('storage',e=>{
   if(e.key==='sidechain-presets')return synthPanel.renderHead();
+  if(e.key===PART_KEY&&e.newValue&&e.newValue!==synPart){synPart=Synth.part(e.newValue).id;return renderSynth()}
   if(e.key!=='sidechain-v1'||!e.newValue)return;
-  try{const n=JSON.parse(e.newValue);if(n.synth&&JSON.stringify(n.synth)!==JSON.stringify(S.synth)){S.synth=Synth.normalize(n.synth);S.synthId=n.synthId;renderSynth()}
-    if(n.pat&&n.pat.lead&&JSON.stringify(n.pat.lead)!==JSON.stringify(S.pat.lead)){S.pat.lead=n.pat.lead;sel=null;renderTrack('lead');renderEditor()}}catch(err){}
+  try{const n=JSON.parse(e.newValue);let redraw=false;
+    Synth.PARTS.forEach(({keys:[k,kid]})=>{if(n[k]&&JSON.stringify(n[k])!==JSON.stringify(S[k])){S[k]=Synth.normalize(n[k]);S[kid]=n[kid];redraw=true}});if(redraw)renderSynth();
+    ['lead','bass'].forEach(id=>{if(n.pat&&n.pat[id]&&JSON.stringify(n.pat[id])!==JSON.stringify(S.pat[id])){S.pat[id]=n.pat[id];sel=null;renderTrack(id);renderEditor()}})}catch(err){}
 });
 
 function renderEverything(){renderAll();renderProg();renderEditor();renderArr();renderSynth();syncMacros();syncTop();applyAudio();save()}
@@ -334,7 +341,7 @@ $('#key').innerHTML=NOTE.map((n,i)=>`<option value="${i}">${n}</option>`).join('
 $('#scale').innerHTML=Object.keys(SCALES).map(s=>`<option>${s}</option>`).join('');
 buildStyles();buildGrid();buildMacros();renderEverything();
 
-$('#midi').onclick=()=>exportMidi(S,{semis,bassBase,leadOct:12*S.synth.oct});
+$('#midi').onclick=()=>exportMidi(S,{semis,bassBase,leadOct:12*S.synth.oct,bassOct:12*S.bassSynth.oct,padOct:12*S.padSynth.oct});
 $('#play').onclick=()=>playing?stop():start();
 $('#gen').onclick=()=>{S=fresh(S.style,S.key,true);sel=null;renderEverything()};
 $('#arrange').onclick=()=>{S.arrange=!S.arrange;if(playing){bar=0}renderEverything()};
@@ -357,7 +364,7 @@ document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|SELECT|BUTT
 function preview(id,i){
   if(!ctx||playing)return;ctx.resume();const t=ctx.currentTime+.01,r=S.prog[0],sd=60/S.bpm/4,P=S.pat;
   ({kick:()=>kick(t,1),clap:()=>clap(t,1),hat:()=>hat(t,.7,false),ohat:()=>hat(t,.7,true),pad:()=>pad(t,chordFreqs(r),.4),
-    bass:()=>bass(t,mtof(bassBase()+semis(r+P.bass[i].d)),sd*P.bass[i].len,1),lead:()=>lead(t,mtof(leadNote(r+P.lead[i].d)),sd*P.lead[i].len,1)})[id]();
+    bass:()=>bass(t,mtof(bassNote(r+P.bass[i].d)),sd*P.bass[i].len,1,P.bass[i].w),lead:()=>lead(t,mtof(leadNote(r+P.lead[i].d)),sd*P.lead[i].len,1)})[id]();
 }
 $('#grid').onclick=e=>{
   const mute=e.target.closest('.mute'),dice=e.target.closest('.dice'),cell=e.target.closest('.cell');

@@ -1,11 +1,12 @@
-// Lead synth panel UI: presets (built-in + saved), Simple knobs / All controls, and the three pictures.
+// Synth panel UI for one part (lead, bass or chords): presets (built-in + saved), Simple knobs / All controls, and the three pictures.
 // Shared by the Groovebox panel and the Synth page. The host page provides the audio side:
 //   createSynthPanel(root, {
 //     model: () => object with .synth and .synthId (the song state), persist: () => save it,
 //     audition: () => play one note, tryPhrase: () => play a short phrase,
 //     noteHz: () => pitch to draw the overtones at, analyser: () => AnalyserNode on the lead (or null),
-//     lastHz: () => pitch of the last note played, sampleRate: () => audio sample rate })
-// Expects inside root: #synPreset #synTry #synSave #synDel #synWho #synMode #synSimple #synGroups
+//     lastHz: () => pitch of the last note played, sampleRate: () => audio sample rate,
+//     part: () => 'lead' | 'bass' | 'pad', setPart: id => switch the host to that part (model() then returns it) })
+// Expects inside root: #synPart (optional) #synH #synPreset #synTry #synSave #synDel #synWho #synMode #synSimple #synGroups
 // and the pictures #vzWave #vzSpec #vzEnv with captions #vcWave #vcSpec #vcEnv.
 function createSynthPanel(root, o) {
   const $ = s => root.querySelector(s), M = () => o.model();
@@ -20,11 +21,16 @@ function createSynthPanel(root, o) {
     if (id.startsWith('u:')) { const u = userPresets()[id.slice(2)]; return u && { name: id.slice(2), who: 'Your sound', p: Synth.normalize(u) }; }
     const b = Synth.byId(id); return b && { name: b.name, who: b.who, p: b.p };
   }
+  const part = () => Synth.part(o.part ? o.part() : 'lead');
   function renderHead() {
-    const m = M(), u = Object.keys(userPresets()), src = source();
+    const m = M(), u = Object.keys(userPresets()), src = source(), pt = part();
+    root.style.setProperty('--lead', pt.id === 'lead' ? '' : `var(--${pt.id})`);
+    if ($('#synH')) $('#synH').textContent = `${pt.name} synth`;
+    $('#synPreset').setAttribute('aria-label', `${pt.name} sound preset`);
+    if ($('#synPart')) $('#synPart').innerHTML = Synth.PARTS.map(x => `<button data-part="${x.id}" aria-pressed="${x.id === pt.id}" style="--c:var(--${x.id})">${x.name}</button>`).join('');
     const opt = (v, label) => `<option value="${esc(v)}"${v === m.synthId ? ' selected' : ''}>${esc(label)}</option>`;
     $('#synPreset').innerHTML = (src ? '' : '<option value="" selected>Custom</option>') +
-      Synth.CATS.map(([c, label]) => `<optgroup label="${label}">${Synth.PRESETS.filter(x => x.cat === c).map(x => opt(x.id, x.name)).join('')}</optgroup>`).join('') +
+      Synth.catsFor(part().id).map(([c, label]) => `<optgroup label="${label}">${Synth.PRESETS.filter(x => x.cat === c).map(x => opt(x.id, x.name)).join('')}</optgroup>`).join('') +
       (u.length ? `<optgroup label="My sounds">${u.map(n => opt('u:' + n, n)).join('')}</optgroup>` : '');
     $('#synDel').hidden = !(m.synthId || '').startsWith('u:');
     $('#synWho').textContent = src ? `${src.who}${Synth.same(src.p, m.synth) ? '' : ' · edited'}` : 'Your own tweaks. Save to keep them.';
@@ -51,7 +57,7 @@ function createSynthPanel(root, o) {
   }
 
   /* pictures: one cycle of the wave, overtones vs. the filter, and the shape of a note over time */
-  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const css = v => getComputedStyle(root).getPropertyValue(v).trim();
   let fltCtx; try { fltCtx = new OfflineAudioContext(1, 1, 44100); } catch (e) {}
   function fit(cv) { const d = devicePixelRatio || 1, w = cv.clientWidth * d, h = cv.clientHeight * d; if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; } const c = cv.getContext('2d'); c.clearRect(0, 0, w, h); return [c, w, h, d]; }
   function drawWave(live) {
@@ -114,8 +120,9 @@ function createSynthPanel(root, o) {
   const set = (k, v) => { M().synth[k] = v; renderHead(); o.persist(); };
   $('#synPreset').onchange = e => { const id = e.target.value; if (!id) return; M().synthId = id; const src = source(); if (src) M().synth = Synth.normalize(src.p); render(); o.persist(); o.audition(); };
   $('#synTry').onclick = () => o.tryPhrase();
+  if ($('#synPart')) $('#synPart').onclick = e => { const b = e.target.closest('button'); if (!b || !o.setPart) return; o.setPart(b.dataset.part); render(); };
   $('#synSave').onclick = () => {
-    const m = M(), cur = source(), name = (prompt('Name this sound', cur && (m.synthId || '').startsWith('u:') ? cur.name : (cur ? cur.name + ' (mine)' : 'My lead')) || '').trim().slice(0, 40);
+    const m = M(), cur = source(), name = (prompt('Name this sound', cur && (m.synthId || '').startsWith('u:') ? cur.name : (cur ? cur.name + ' (mine)' : 'My ' + part().name.toLowerCase())) || '').trim().slice(0, 40);
     if (!name) return; const u = userPresets(); u[name] = { ...m.synth }; setUserPresets(u); m.synthId = 'u:' + name; renderHead(); o.persist();
   };
   $('#synDel').onclick = () => {

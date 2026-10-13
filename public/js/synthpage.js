@@ -8,9 +8,14 @@ const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
 const readSong = () => { try { return JSON.parse(localStorage.getItem(SONG)) || {}; } catch (e) { return {}; } };
 
 const M = readSong();
-M.synth = M.synth ? Synth.normalize(M.synth) : Synth.normalize(Synth.byId(M.synthId = 'chime').p);
+const DEFAULT = { lead: 'chime', bass: 'fbbass', pad: 'fbchords' };
+Synth.PARTS.forEach(({ id, keys: [k, kid] }) => { M[k] = M[k] ? Synth.normalize(M[k]) : Synth.normalize(Synth.byId(M[kid] = DEFAULT[id]).p); });
+// which sound the page edits and plays: lead, bass or chords (shared with the Groovebox panel)
+const PART_KEY = 'sidechain-synth-part';
+let part = 'lead'; try { part = Synth.part(localStorage.getItem(PART_KEY)).id; } catch (e) {}
+const view = () => Synth.partView(M, part), cur = () => view().synth;
 M.key = M.key ?? 0; M.scale = SCALES[M.scale] ? M.scale : 'major';
-function persist() { const cur = readSong(); cur.synth = M.synth; cur.synthId = M.synthId; try { localStorage.setItem(SONG, JSON.stringify(cur)); } catch (e) {} }
+function persist() { const s = readSong(); Synth.PARTS.forEach(({ keys }) => keys.forEach(k => { s[k] = M[k]; })); try { localStorage.setItem(SONG, JSON.stringify(s)); } catch (e) {} }
 
 /* audio: lead bus -> light reverb + delay from the song's settings -> out */
 let ctx, leadOut, leadAn, lastHz = 440;
@@ -28,26 +33,46 @@ function ensureAudio() {
   }
   ctx.resume(); return ctx.currentTime + 0.01;
 }
-const noteMidi = n => n + 12 * M.synth.oct;
-function play(n, v = 1) { const t = ensureAudio(), f = mtof(noteMidi(n)); lastHz = f; return startLead(ctx, leadOut, M.synth, t, f, v); }
-const audition = () => play(60 + M.key, 1).release(ctx.currentTime + 0.32);
+const noteMidi = n => n + 12 * cur().oct;
+function play(n, v = 1) { const t = ensureAudio(), f = mtof(noteMidi(n)); lastHz = f; return startLead(ctx, leadOut, cur(), t, f, v); }
+// where each part sits, as in the Groovebox: bass two octaves under the chords, the lead's home a 5th-ish above them
+const bassBase = () => 36 + (M.key >= 7 ? M.key - 12 : M.key);
+const home = () => (part === 'bass' ? bassBase() : part === 'pad' ? bassBase() + 24 : 60 + M.key);
+const degNote = (b, d) => { const sc = SCALES[M.scale]; return b + sc[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7); };
+const firstChord = () => (M.prog && M.prog.length ? M.prog[0] : 0);
+const chord = (t, r, dur) => [0, 2, 4].forEach(k => { const f = mtof(noteMidi(degNote(bassBase() + 24, r + k))); lastHz = f; startLead(ctx, leadOut, cur(), t, f, 1).release(t + dur); });
+function audition() {
+  if (part === 'pad') return chord(ensureAudio(), firstChord(), 0.6);
+  play(home(), 1).release(ctx.currentTime + (part === 'bass' ? 0.4 : 0.32));
+}
 function tryPhrase() {
-  const sc = SCALES[M.scale], deg = d => 60 + M.key + sc[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7), s = 60 / (M.bpm || 120) / 4 * 1.5;
-  const t0 = ensureAudio();
-  [[0, 0, 2], [2, 2, 1], [4, 3, 1], [7, 4, 2], [4, 6, 2], [2, 8, 1], [0, 9, 5]].forEach(([d, st, len]) => {
-    const f = mtof(noteMidi(deg(d))); lastHz = f; startLead(ctx, leadOut, M.synth, t0 + st * s, f, st ? 0.85 : 1).release(t0 + (st + len) * s * 0.93);
+  const s = 60 / (M.bpm || 120) / 4, t0 = ensureAudio(), prog = M.prog && M.prog.length ? M.prog : [0];
+  if (part === 'pad') return prog.forEach((r, b) => chord(t0 + b * s * 8, r, s * 7.5));
+  const line = part === 'bass' ? prog.flatMap((r, b) => [[0, 0, 3], [3, 7, 1], [6, 0, 2], [10, 0, 2], [12, 4, 3]].map(([st, d, len]) => [r + d, b * 8 + st / 2, len / 2]))
+    : [[0, 0, 2], [2, 2, 1], [4, 3, 1], [7, 4, 2], [4, 6, 2], [2, 8, 1], [0, 9, 5]].map(([d, st, len]) => [d, st * 1.5, len * 1.4]);
+  line.forEach(([d, st, len], i) => {
+    const f = mtof(noteMidi(degNote(home(), d))); lastHz = f; startLead(ctx, leadOut, cur(), t0 + st * s, f, i ? 0.85 : 1).release(t0 + (st + len) * s * 0.93);
   });
 }
 
+function setPart(id) {
+  [...held.keys()].forEach(noteOff); arp.notes.clear(); arpStop(); if (rec.state !== 'idle') recCancel();
+  part = Synth.part(id).id; try { localStorage.setItem(PART_KEY, part); } catch (e) {}
+  document.body.style.setProperty('--lead', part === 'lead' ? '' : `var(--${part})`);
+  kbOct = loadOct(); renderKeys(); renderRec(); $('#recMsg').textContent = '';
+}
 const panel = createSynthPanel($('#synth'), {
-  model: () => M, persist, audition, tryPhrase,
-  noteHz: () => mtof(noteMidi(60 + M.key)), analyser: () => leadAn || null, lastHz: () => lastHz, sampleRate: () => (ctx ? ctx.sampleRate : 44100),
+  model: view, persist, audition, tryPhrase, part: () => part, setPart,
+  noteHz: () => mtof(noteMidi(home())), analyser: () => leadAn || null, lastHz: () => lastHz, sampleRate: () => (ctx ? ctx.sampleRate : 44100),
 });
 panel.render();
 (function frame() { requestAnimationFrame(frame); panel.tick(); })();
 
 /* keyboard: two octaves, notes in the song's key marked, played by touch, mouse, computer keys or a MIDI keyboard */
-let kbOct = 4; try { kbOct = +localStorage.getItem(OCT_KEY) || 4; } catch (e) {}
+const KB_DEFAULT = { lead: 4, bass: 2, pad: 3 };
+const loadOct = () => { try { return +localStorage.getItem(OCT_KEY + (part === 'lead' ? '' : '-' + part)) || KB_DEFAULT[part]; } catch (e) { return KB_DEFAULT[part]; } };
+const saveOct = () => { try { localStorage.setItem(OCT_KEY + (part === 'lead' ? '' : '-' + part), kbOct); } catch (e) {} };
+let kbOct = loadOct();
 const held = new Map();   // pressed note -> velocity
 const COMPUTER = 'awsedftgyhujkolp;\'';
 function noteOn(n, v = 0.9) {
@@ -65,9 +90,9 @@ function noteOff(n) {
 const voices = new Map(), mono = { v: null, n: null, stack: [] };
 function voiceOn(n, v) {
   rec.on(n, v);
-  if (M.synth.mono !== 'mono') { voices.set(n, play(n, v)); return; }
+  if (cur().mono !== 'mono') { voices.set(n, play(n, v)); return; }
   mono.stack = mono.stack.filter(x => x !== n).concat(n);
-  if (mono.v) { const t = ensureAudio(); lastHz = mtof(noteMidi(n)); mono.v.glide(lastHz, t, M.synth.glide); } else mono.v = play(n, v);
+  if (mono.v) { const t = ensureAudio(); lastHz = mtof(noteMidi(n)); mono.v.glide(lastHz, t, cur().glide); } else mono.v = play(n, v);
   mono.n = n;
 }
 function voiceOff(n) {
@@ -75,7 +100,7 @@ function voiceOff(n) {
   const vc = voices.get(n); if (vc) { vc.release(ctx.currentTime); voices.delete(n); return; }
   mono.stack = mono.stack.filter(x => x !== n);
   if (!mono.v || n !== mono.n) return;
-  if (mono.stack.length) { const back = mono.stack[mono.stack.length - 1]; lastHz = mtof(noteMidi(back)); mono.v.glide(lastHz, ctx.currentTime, M.synth.glide); mono.n = back; }
+  if (mono.stack.length) { const back = mono.stack[mono.stack.length - 1]; lastHz = mtof(noteMidi(back)); mono.v.glide(lastHz, ctx.currentTime, cur().glide); mono.n = back; }
   else { mono.v.release(ctx.currentTime); mono.v = mono.n = null; }
 }
 
@@ -103,9 +128,9 @@ function arpTick() {
   while (arp.next < ctx.currentTime + 0.12) {
     const seq = arpSeq(), n = arp.mode === 'random' ? seq[Math.floor(Math.random() * seq.length)] : seq[arp.i++ % seq.length];
     const t = arp.next, f = mtof(noteMidi(n)), v = arp.notes.get(n) ?? 0.9, L = arp.last;
-    lastHz = f; rec.add(n, v, t, t + step * (M.synth.mono === 'mono' ? 1 : 0.7));
-    if (M.synth.mono === 'mono' && L && L.end >= t - 0.01) { L.v.glide(f, t, M.synth.glide); L.v.release(t + step); L.end = t + step; }
-    else { const vc = startLead(ctx, leadOut, M.synth, t, f, v); vc.release(t + step * (M.synth.mono === 'mono' ? 1 : 0.7)); arp.last = { v: vc, end: t + step }; }
+    lastHz = f; rec.add(n, v, t, t + step * (cur().mono === 'mono' ? 1 : 0.7));
+    if (cur().mono === 'mono' && L && L.end >= t - 0.01) { L.v.glide(f, t, cur().glide); L.v.release(t + step); L.end = t + step; }
+    else { const vc = startLead(ctx, leadOut, cur(), t, f, v); vc.release(t + step * (cur().mono === 'mono' ? 1 : 0.7)); arp.last = { v: vc, end: t + step }; }
     arp.next += step;
   }
 }
@@ -140,8 +165,8 @@ function renderKeys() {
   $('#inKey').innerHTML = `Dots = notes in your song's key, <b>${NOTE[M.key]} ${M.scale}</b>`;
 }
 renderKeys();
-$('#octDn').onclick = () => { kbOct = Math.max(1, kbOct - 1); try { localStorage.setItem(OCT_KEY, kbOct); } catch (e) {} renderKeys(); };
-$('#octUp').onclick = () => { kbOct = Math.min(6, kbOct + 1); try { localStorage.setItem(OCT_KEY, kbOct); } catch (e) {} renderKeys(); };
+$('#octDn').onclick = () => { kbOct = Math.max(1, kbOct - 1); saveOct(); renderKeys(); };
+$('#octUp').onclick = () => { kbOct = Math.min(6, kbOct + 1); saveOct(); renderKeys(); };
 
 // touch / mouse, including sliding across keys
 const pointers = new Map();   // pointerId -> note
@@ -174,13 +199,13 @@ $('#midiBtn').onclick = async () => {
     const acc = await navigator.requestMIDIAccess();
     const hook = () => { const ins = [...acc.inputs.values()]; ins.forEach(inp => { inp.onmidimessage = m => {
       const [st, n, vel] = m.data, cmd = st & 0xf0;
-      if (cmd === 0x90 && vel > 0) noteOn(n - 12 * M.synth.oct, vel / 127); else if (cmd === 0x80 || (cmd === 0x90 && vel === 0)) noteOff(n - 12 * M.synth.oct);
+      if (cmd === 0x90 && vel > 0) noteOn(n - 12 * cur().oct, vel / 127); else if (cmd === 0x80 || (cmd === 0x90 && vel === 0)) noteOff(n - 12 * cur().oct);
     }; }); b.textContent = ins.length ? `MIDI: ${ins.map(i => i.name).join(', ')}` : 'No MIDI keyboard found'; };
     hook(); acc.onstatechange = hook;
   } catch (err) { b.textContent = 'MIDI blocked'; }
 };
 
-/* record: one bar of what you play becomes the Groovebox lead pattern.
+/* record: one bar of what you play becomes the Groovebox lead (or bass) pattern.
    Count-in, then a click and the first chord of your progression loop while you play; notes snap to the 16 steps and to the key. */
 const rec = {
   state: 'idle', notes: [], open: new Map(), t0: 0, undo: null, timer: null,
@@ -196,7 +221,7 @@ function click(t, hi) {
   g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05); o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.06);
 }
 function chordBed(t, dur) {   // soft triangle chord on the progression's first chord, so you hear what you're playing over
-  const r = (M.prog && M.prog.length ? M.prog[0] : 0), g = ctx.createGain(); g.connect(ctx.destination);
+  const r = firstChord(), g = ctx.createGain(); g.connect(ctx.destination);
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05, t + 0.05); g.gain.setValueAtTime(0.05, t + dur - 0.1); g.gain.linearRampToValueAtTime(0, t + dur);
   [0, 2, 4].forEach(k => { const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = mtof(leadBase() - 12 + scaleSemis(r + k)); o.connect(g); o.start(t); o.stop(t + dur); });
 }
@@ -218,37 +243,40 @@ function recStart() {
 function recFinish() {
   cancelAnimationFrame(rec.timer);
   const now = ctx.currentTime; rec.open.forEach(o => rec.notes.push({ ...o, end: now })); rec.open.clear();
-  const pat = Theory.takeToPattern(rec.notes, { t0: rec.t0, step: sd(), sc: SCALES[M.scale], base: leadBase(), root: M.prog && M.prog.length ? M.prog[0] : 0 });
+  const pat = Theory.takeToPattern(rec.notes, { t0: rec.t0, step: sd(), sc: SCALES[M.scale], base: part === 'bass' ? bassBase() : leadBase(), root: firstChord() });
   rec.state = 'idle';
   if (pat.some(Boolean)) {
-    const cur = readSong(); if (cur.pat) { rec.undo = cur.pat.lead; cur.pat.lead = pat; try { localStorage.setItem(SONG, JSON.stringify(cur)); } catch (e) {} }
-    $('#recMsg').textContent = `Recorded ${pat.filter(Boolean).length} notes into the Groovebox lead.`;
+    const song = readSong(); if (song.pat) { rec.undo = { part, pat: song.pat[part] }; song.pat[part] = pat; try { localStorage.setItem(SONG, JSON.stringify(song)); } catch (e) {} }
+    $('#recMsg').textContent = `Recorded ${pat.filter(Boolean).length} notes into the Groovebox ${part}.`;
   } else $('#recMsg').textContent = 'Nothing played, lead left as it was.';
   renderRec();
 }
 function recCancel() { cancelAnimationFrame(rec.timer); rec.state = 'idle'; rec.open.clear(); $('#recMsg').textContent = ''; renderRec(); }
 function renderRec() {
-  const b = $('#recBtn'); b.classList.toggle('on', rec.state !== 'idle'); b.style.setProperty('--p', 0);
+  const b = $('#recBtn'); b.hidden = part === 'pad'; b.title = `Record one bar of what you play into the Groovebox ${part}`; b.classList.toggle('on', rec.state !== 'idle'); b.style.setProperty('--p', 0);
   b.textContent = rec.state === 'count' ? '1 2 3 4…' : rec.state === 'rec' ? '● Recording' : '● Record';
   $('#recUndo').hidden = rec.state !== 'idle' || !rec.undo;
   if (rec.state !== 'idle') $('#recMsg').textContent = rec.state === 'count' ? 'Get ready, one bar of clicks first.' : 'Play one bar now.';
 }
 $('#recBtn').onclick = () => (rec.state === 'idle' ? recStart() : recCancel());
 $('#recUndo').onclick = () => {
-  const cur = readSong(); if (!cur.pat || !rec.undo) return; cur.pat.lead = rec.undo; rec.undo = null;
-  try { localStorage.setItem(SONG, JSON.stringify(cur)); } catch (e) {} $('#recMsg').textContent = 'Put the old lead back.'; renderRec();
+  const song = readSong(); if (!song.pat || !rec.undo) return; song.pat[rec.undo.part] = rec.undo.pat; const was = rec.undo.part; rec.undo = null;
+  try { localStorage.setItem(SONG, JSON.stringify(song)); } catch (e) {} $('#recMsg').textContent = `Put the old ${was} back.`; renderRec();
 };
 renderRec();
 
 // stay in step with the Groovebox in another tab
 window.addEventListener('storage', e => {
   if (e.key === 'sidechain-presets') return panel.renderHead();
+  if (e.key === PART_KEY && e.newValue && e.newValue !== part) { setPart(e.newValue); return panel.render(); }
   if (e.key !== SONG || !e.newValue) return;
   try {
     const n = JSON.parse(e.newValue);
     const keyChanged = n.key !== M.key || n.scale !== M.scale;
     Object.assign(M, { key: n.key ?? M.key, scale: SCALES[n.scale] ? n.scale : M.scale, bpm: n.bpm, space: n.space, echo: n.echo, prog: n.prog });
-    if (n.synth && JSON.stringify(n.synth) !== JSON.stringify(M.synth)) { M.synth = Synth.normalize(n.synth); M.synthId = n.synthId; panel.render(); }
+    let redraw = false;
+    Synth.PARTS.forEach(({ keys: [k, kid] }) => { if (n[k] && JSON.stringify(n[k]) !== JSON.stringify(M[k])) { M[k] = Synth.normalize(n[k]); M[kid] = n[kid]; redraw = true; } });
+    if (redraw) panel.render();
     if (keyChanged) renderKeys();
   } catch (err) {}
 });
@@ -256,3 +284,4 @@ window.addEventListener('storage', e => {
 // leave room under the page for the pinned keyboard
 const fitDock = () => document.body.style.setProperty('--dockH', $('#dock').offsetHeight + 16 + 'px');
 fitDock(); window.addEventListener('resize', fitDock);
+document.body.style.setProperty('--lead', part === 'lead' ? '' : `var(--${part})`);
