@@ -12,7 +12,7 @@ npm run check           # syntax-check all JS
 npm test                # node:test suite in test/ (theory helpers + server smoke tests)
 ```
 Run `npm run check && npm test` before committing. PR CI only runs `npm run check` (Node 22) to stay light; the Pages deploy runs check + tests before publishing.
-`.github/workflows/pages.yml` deploys `public/` to GitHub Pages on every push to main, so keep asset paths relative (the site lives under `/sidechain/`).
+`.github/workflows/pages.yml` deploys `public/` to GitHub Pages on every push to main, so keep asset paths relative (the site lives under `/sidechain/`). The deploy stamps `?v=<sha>` on css/js links so phones don't mix cached old CSS with new pages.
 Cloud sessions run `.claude/hooks/session-start.sh`, which checks the Node version and syntax (and runs `npm ci` if a lockfile ever appears).
 Copy `.env.example` to `.env` and add `ANTHROPIC_API_KEY` to enable `/api/arrange`.
 

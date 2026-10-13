@@ -23,6 +23,8 @@ jobs:
         with:
           node-version: 22
       - run: npm run check && npm test
+      # Stamp each CSS/JS link with the commit, so browsers fetch the new files instead of mixing cached old ones with new pages.
+      - run: sed -i -E "s#(href|src)=\"((css|js)/[^\"?]+)\"#\1=\"\2?v=${GITHUB_SHA::7}\"#g" public/*.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public
