@@ -44,11 +44,15 @@
     <span id="arpOpts"><select id="arpRate" aria-label="Arp speed"><option value="2">1/8</option><option value="4">1/16</option><option value="3">1/8 triplet</option></select>
     <select id="arpOct" aria-label="Arp octaves"><option value="1">1 oct</option><option value="2">2 oct</option><option value="3">3 oct</option></select>
     <button class="btn sm" id="arpHold" aria-pressed="false" title="Keep playing after you let go">Hold</button></span>
+    <button class="btn sm rec" id="recBtn" title="Record one bar of what you play into the Groovebox lead">● Record</button>
+    <button class="btn sm" id="recUndo" hidden>Undo</button>
+    <span class="tip" id="recMsg"></span>
     <span class="tip">Hold a chord and the arp plays its notes one by one, in time with your song.</span>
   </div>
   <div class="kb" id="kb" aria-label="Keyboard"></div>
 </div>
 
+<script src="js/theory.js"></script>
 <script src="js/synth.js"></script>
 <script src="js/leadvoice.js"></script>
 <script src="js/synthpanel.js"></script>

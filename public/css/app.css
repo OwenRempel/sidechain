@@ -142,4 +142,8 @@ body{margin:0}
 .dock-bar select{width:auto;padding:4px 8px;font-size:.75rem}
 .dock-bar.arp label{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--dim)}
 .dock-bar.arp #arpOpts{display:flex;gap:6px;align-items:center}.dock-bar.arp #arpOpts[hidden]{display:none}
-@media (max-width:480px){.dock-bar .tip{order:9;flex-basis:100%;font-size:.7rem}.dock-bar.arp .tip{display:none}.dock{gap:6px;padding-top:6px}}
+@media (max-width:480px){.dock-bar .tip{order:9;flex-basis:100%;font-size:.7rem}.dock-bar.arp .tip:not(#recMsg){display:none}.dock{gap:6px;padding-top:6px}}
+.btn.rec{--p:0;color:var(--kick);border-color:color-mix(in srgb,var(--kick) 45%,var(--line))}
+.btn.rec.on{background:linear-gradient(90deg,color-mix(in srgb,var(--kick) 35%,var(--panel2)) calc(var(--p)*100%),var(--panel2) 0);color:var(--ink)}
+.dock-bar #recMsg:empty{display:none}
+.dock-bar #recMsg:not(:empty)~.tip{display:none}

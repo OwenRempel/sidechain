@@ -64,12 +64,14 @@ function noteOff(n) {
 // sound: poly = one voice per key; mono = one voice that glides between keys (last key pressed wins, letting go goes back)
 const voices = new Map(), mono = { v: null, n: null, stack: [] };
 function voiceOn(n, v) {
+  rec.on(n, v);
   if (M.synth.mono !== 'mono') { voices.set(n, play(n, v)); return; }
   mono.stack = mono.stack.filter(x => x !== n).concat(n);
   if (mono.v) { const t = ensureAudio(); lastHz = mtof(noteMidi(n)); mono.v.glide(lastHz, t, M.synth.glide); } else mono.v = play(n, v);
   mono.n = n;
 }
 function voiceOff(n) {
+  rec.off(n);
   const vc = voices.get(n); if (vc) { vc.release(ctx.currentTime); voices.delete(n); return; }
   mono.stack = mono.stack.filter(x => x !== n);
   if (!mono.v || n !== mono.n) return;
@@ -101,7 +103,7 @@ function arpTick() {
   while (arp.next < ctx.currentTime + 0.12) {
     const seq = arpSeq(), n = arp.mode === 'random' ? seq[Math.floor(Math.random() * seq.length)] : seq[arp.i++ % seq.length];
     const t = arp.next, f = mtof(noteMidi(n)), v = arp.notes.get(n) ?? 0.9, L = arp.last;
-    lastHz = f;
+    lastHz = f; rec.add(n, v, t, t + step * (M.synth.mono === 'mono' ? 1 : 0.7));
     if (M.synth.mono === 'mono' && L && L.end >= t - 0.01) { L.v.glide(f, t, M.synth.glide); L.v.release(t + step); L.end = t + step; }
     else { const vc = startLead(ctx, leadOut, M.synth, t, f, v); vc.release(t + step * (M.synth.mono === 'mono' ? 1 : 0.7)); arp.last = { v: vc, end: t + step }; }
     arp.next += step;
@@ -178,6 +180,66 @@ $('#midiBtn').onclick = async () => {
   } catch (err) { b.textContent = 'MIDI blocked'; }
 };
 
+/* record: one bar of what you play becomes the Groovebox lead pattern.
+   Count-in, then a click and the first chord of your progression loop while you play; notes snap to the 16 steps and to the key. */
+const rec = {
+  state: 'idle', notes: [], open: new Map(), t0: 0, undo: null, timer: null,
+  on(n, v) { if (this.state === 'idle') return; const t = ctx.currentTime; this.open.set(n, { n, v, t }); },
+  off(n) { const o = this.open.get(n); if (!o) return; this.open.delete(n); this.notes.push({ ...o, end: ctx.currentTime }); },
+  add(n, v, t, end) { if (this.state !== 'idle') this.notes.push({ n, v, t, end }); },
+};
+const sd = () => 60 / (M.bpm || 120) / 4;
+const scaleSemis = d => { const sc = SCALES[M.scale]; return sc[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7); };
+const leadBase = () => 72 + (M.key >= 7 ? M.key - 12 : M.key);   // the Groovebox's lead note for degree 0, before the synth's octave
+function click(t, hi) {
+  const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = hi ? 1760 : 1100;
+  g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05); o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.06);
+}
+function chordBed(t, dur) {   // soft triangle chord on the progression's first chord, so you hear what you're playing over
+  const r = (M.prog && M.prog.length ? M.prog[0] : 0), g = ctx.createGain(); g.connect(ctx.destination);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05, t + 0.05); g.gain.setValueAtTime(0.05, t + dur - 0.1); g.gain.linearRampToValueAtTime(0, t + dur);
+  [0, 2, 4].forEach(k => { const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = mtof(leadBase() - 12 + scaleSemis(r + k)); o.connect(g); o.start(t); o.stop(t + dur); });
+}
+function recStart() {
+  const t = ensureAudio() + 0.1, beat = sd() * 4, bar = beat * 4;
+  rec.state = 'count'; rec.notes = []; rec.open.clear(); rec.t0 = t + bar;
+  for (let b = 0; b < 8; b++) click(t + b * beat, b % 4 === 0);
+  chordBed(t, bar * 2);
+  renderRec();
+  const tick = () => {
+    const now = ctx.currentTime;
+    if (rec.state === 'count' && now >= rec.t0 - sd() / 2) { rec.state = 'rec'; renderRec(); }
+    if (rec.state === 'rec') $('#recBtn').style.setProperty('--p', Math.min(1, (now - rec.t0) / bar));
+    if (now >= rec.t0 + bar - sd() / 2) return recFinish();
+    rec.timer = requestAnimationFrame(tick);
+  };
+  rec.timer = requestAnimationFrame(tick);
+}
+function recFinish() {
+  cancelAnimationFrame(rec.timer);
+  const now = ctx.currentTime; rec.open.forEach(o => rec.notes.push({ ...o, end: now })); rec.open.clear();
+  const pat = Theory.takeToPattern(rec.notes, { t0: rec.t0, step: sd(), sc: SCALES[M.scale], base: leadBase(), root: M.prog && M.prog.length ? M.prog[0] : 0 });
+  rec.state = 'idle';
+  if (pat.some(Boolean)) {
+    const cur = readSong(); if (cur.pat) { rec.undo = cur.pat.lead; cur.pat.lead = pat; try { localStorage.setItem(SONG, JSON.stringify(cur)); } catch (e) {} }
+    $('#recMsg').textContent = `Recorded ${pat.filter(Boolean).length} notes into the Groovebox lead.`;
+  } else $('#recMsg').textContent = 'Nothing played, lead left as it was.';
+  renderRec();
+}
+function recCancel() { cancelAnimationFrame(rec.timer); rec.state = 'idle'; rec.open.clear(); $('#recMsg').textContent = ''; renderRec(); }
+function renderRec() {
+  const b = $('#recBtn'); b.classList.toggle('on', rec.state !== 'idle'); b.style.setProperty('--p', 0);
+  b.textContent = rec.state === 'count' ? '1 2 3 4…' : rec.state === 'rec' ? '● Recording' : '● Record';
+  $('#recUndo').hidden = rec.state !== 'idle' || !rec.undo;
+  if (rec.state !== 'idle') $('#recMsg').textContent = rec.state === 'count' ? 'Get ready, one bar of clicks first.' : 'Play one bar now.';
+}
+$('#recBtn').onclick = () => (rec.state === 'idle' ? recStart() : recCancel());
+$('#recUndo').onclick = () => {
+  const cur = readSong(); if (!cur.pat || !rec.undo) return; cur.pat.lead = rec.undo; rec.undo = null;
+  try { localStorage.setItem(SONG, JSON.stringify(cur)); } catch (e) {} $('#recMsg').textContent = 'Put the old lead back.'; renderRec();
+};
+renderRec();
+
 // stay in step with the Groovebox in another tab
 window.addEventListener('storage', e => {
   if (e.key === 'sidechain-presets') return panel.renderHead();
@@ -185,7 +247,7 @@ window.addEventListener('storage', e => {
   try {
     const n = JSON.parse(e.newValue);
     const keyChanged = n.key !== M.key || n.scale !== M.scale;
-    Object.assign(M, { key: n.key ?? M.key, scale: SCALES[n.scale] ? n.scale : M.scale, bpm: n.bpm, space: n.space, echo: n.echo });
+    Object.assign(M, { key: n.key ?? M.key, scale: SCALES[n.scale] ? n.scale : M.scale, bpm: n.bpm, space: n.space, echo: n.echo, prog: n.prog });
     if (n.synth && JSON.stringify(n.synth) !== JSON.stringify(M.synth)) { M.synth = Synth.normalize(n.synth); M.synthId = n.synthId; panel.render(); }
     if (keyChanged) renderKeys();
   } catch (err) {}

@@ -262,7 +262,7 @@ function renderEditor(){
   const tr=TRACKS.find(t=>t.id===sel.id),bar1=NOTE[((S.key+semis(S.prog[0]+n.d))%12+12)%12];
   ed.hidden=false;ed.style.setProperty('--c',`var(--${sel.id})`);
   ed.innerHTML=`<span class="lbl ed-t">${tr.name} · step ${sel.i+1}</span>
-    <div class="field"><span class="lbl">Pitch</span><button class="pm" data-a="d" data-n="-1" aria-label="Lower"${n.d<=-7?' disabled':''}>−</button><output>${degLabel(n.d)} <small>${bar1} in bar 1</small></output><button class="pm" data-a="d" data-n="1" aria-label="Higher"${n.d>=14?' disabled':''}>+</button></div>
+    <div class="field"><span class="lbl">Pitch</span><button class="pm" data-a="d" data-n="-1" aria-label="Lower"${n.d<=-21?' disabled':''}>−</button><output>${degLabel(n.d)} <small>${bar1} in bar 1</small></output><button class="pm" data-a="d" data-n="1" aria-label="Higher"${n.d>=21?' disabled':''}>+</button></div>
     <div class="field"><span class="lbl">Length</span><button class="pm" data-a="len" data-n="-1" aria-label="Shorter"${n.len<=1?' disabled':''}>−</button><output>${n.len} step${n.len>1?'s':''}</output><button class="pm" data-a="len" data-n="1" aria-label="Longer"${sel.i+n.len>=nx?' disabled':''}>+</button></div>
     <div class="field"><span class="lbl">Level</span><button class="btn sm" data-a="v" aria-pressed="${n.v>=.95}">${n.v>=.95?'Loud':'Soft'}</button></div>
     ${sel.id==='bass'?`<div class="field"><span class="lbl">Wobble</span><select data-a="w" aria-label="Wobble rate">${[1,2,3,4,6].map(w=>`<option value="${w}"${(n.w||2)===w?' selected':''}>×${w}</option>`).join('')}</select></div>`:''}
@@ -271,7 +271,7 @@ function renderEditor(){
 function editNote(a,val){
   const n=S.pat[sel.id][sel.i];
   if(a==='del'){S.pat[sel.id][sel.i]=null;sel=null}
-  else if(a==='d'){n.d=Math.max(-7,Math.min(14,n.d+val));lastD[sel.id]=n.d}
+  else if(a==='d'){n.d=Math.max(-21,Math.min(21,n.d+val));lastD[sel.id]=n.d}
   else if(a==='len'){let nx=sel.i+1;while(nx<16&&!S.pat[sel.id][nx])nx++;n.len=Math.max(1,Math.min(nx-sel.i,n.len+val))}
   else if(a==='v')n.v=n.v>=.95?.7:1;
   else if(a==='w')n.w=val;
@@ -324,7 +324,8 @@ $('#synPop').onclick=()=>{save();window.open('synth.html','sidechain-synth')};
 window.addEventListener('storage',e=>{
   if(e.key==='sidechain-presets')return synthPanel.renderHead();
   if(e.key!=='sidechain-v1'||!e.newValue)return;
-  try{const n=JSON.parse(e.newValue);if(n.synth&&JSON.stringify(n.synth)!==JSON.stringify(S.synth)){S.synth=Synth.normalize(n.synth);S.synthId=n.synthId;renderSynth()}}catch(err){}
+  try{const n=JSON.parse(e.newValue);if(n.synth&&JSON.stringify(n.synth)!==JSON.stringify(S.synth)){S.synth=Synth.normalize(n.synth);S.synthId=n.synthId;renderSynth()}
+    if(n.pat&&n.pat.lead&&JSON.stringify(n.pat.lead)!==JSON.stringify(S.pat.lead)){S.pat.lead=n.pat.lead;sel=null;renderTrack('lead');renderEditor()}}catch(err){}
 });
 
 function renderEverything(){renderAll();renderProg();renderEditor();renderArr();renderSynth();syncMacros();syncTop();applyAudio();save()}

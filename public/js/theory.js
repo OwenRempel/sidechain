@@ -171,7 +171,21 @@ const Theory = (() => {
     let b = bar % total;
     for (const s of secs) { if (b < s.bars) return { ...s, b }; b -= s.bars; }
   }
-  return { NOTE, SCALE, QUAL, DEGREES, PROGRESSIONS, MOVES, INTERVALS, BEATS, JOBS, ARRANGEMENT, SHAPES, HOOKS, chordNotes, chordName, degreeChord, mtof, parseBeat, beatStats, sectionAt, degSemi, noteRole };
+  // A recorded take -> a 16-step lead pattern. notes: [{n (MIDI), v, t, end}] in seconds; t0 = start of the bar, step = one 16th.
+  // sc: the scale's 7 semitone offsets, base: MIDI note of degree 0, root: the chord's degree. Notes snap to the grid and to the key;
+  // `d` comes out relative to the chord root, like the Groovebox lead. One note per step (the highest wins), lengths stop at the next note.
+  function takeToPattern(notes, { t0, step, sc, base, root = 0 }) {
+    const semi = d => sc[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7), pat = Array(16).fill(null);
+    const degree = n => { let best = 0, gap = Infinity; for (let D = -21; D <= 28; D++) { const g = Math.abs(semi(D) - (n - base)); if (g < gap) { gap = g; best = D; } } return best - root; };
+    notes.forEach(o => {
+      const i = Math.round((o.t - t0) / step); if (i < 0 || i > 15) return;
+      if (!pat[i] || o.n > pat[i].n) pat[i] = { n: o.n, d: degree(o.n), len: Math.max(1, Math.round((o.end - o.t) / step)), v: Math.round(Math.max(0.3, Math.min(1, o.v)) * 100) / 100 };
+    });
+    for (let i = 0; i < 16; i++) if (pat[i]) { let nx = i + 1; while (nx < 16 && !pat[nx]) nx++; pat[i].len = Math.min(pat[i].len, nx - i); }
+    return pat.map(x => x && { d: x.d, len: x.len, v: x.v });
+  }
+
+  return { NOTE, SCALE, takeToPattern, QUAL, DEGREES, PROGRESSIONS, MOVES, INTERVALS, BEATS, JOBS, ARRANGEMENT, SHAPES, HOOKS, chordNotes, chordName, degreeChord, mtof, parseBeat, beatStats, sectionAt, degSemi, noteRole };
 })();
 
 if (typeof module !== 'undefined') module.exports = Theory; // lets node --test require it; browsers ignore this
