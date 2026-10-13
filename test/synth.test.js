@@ -8,6 +8,7 @@ test('every param has a group, a default and a sane range', () => {
     assert.ok(groups.has(s.g), s.k);
     assert.ok(s.k in Synth.BASE, s.k);
     if (s.type === 'choice') assert.ok(s.options.some(o => o[0] === Synth.BASE[s.k]), s.k);
+    else if (s.type === 'sample') assert.equal(Synth.BASE[s.k], '', s.k);
     else {
       assert.ok(s.min < s.max, s.k);
       assert.ok(Synth.BASE[s.k] >= s.min && Synth.BASE[s.k] <= s.max, `${s.k} default in range`);
@@ -17,8 +18,10 @@ test('every param has a group, a default and a sane range', () => {
   }
 });
 
-test('presets are unique and already in range', () => {
+test('presets are unique, filed in a category and already in range', () => {
   assert.equal(new Set(Synth.PRESETS.map(p => p.id)).size, Synth.PRESETS.length);
+  for (const pr of Synth.PRESETS) assert.ok(Synth.CATS.some(([c]) => c === pr.cat), `${pr.name} category`);
+  for (const [c] of Synth.CATS) assert.ok(Synth.PRESETS.some(pr => pr.cat === c), `${c} has presets`);
   for (const pr of Synth.PRESETS) assert.ok(Synth.same(Synth.normalize(pr.p), pr.p), pr.name);
 });
 
@@ -58,4 +61,29 @@ test('pictures follow the sound', () => {
   const pluck = Synth.applyMacro(Synth.BASE, 'shape', 0), env = t => Synth.envAt(pluck, t, 0.5).amp;
   assert.ok(env(0.001) > 0.4 && env(0.4) < 0.05 && env(1.5) < 0.01, 'pluck hits and fades');
   assert.match(Synth.describe(pluck).shape, /Pluck/);
+});
+
+test('bass and chords parts: views, menus and presets', () => {
+  const S = { synth: { a: 1 }, synthId: 'chime', bassSynth: { b: 1 }, bassSynthId: 'fbbass' };
+  const v = Synth.partView(S, 'bass');
+  assert.equal(v.synthId, 'fbbass'); v.synth = { c: 1 }; v.synthId = 'subbass';
+  assert.deepEqual(S.bassSynth, { c: 1 }); assert.equal(S.bassSynthId, 'subbass'); assert.deepEqual(S.synth, { a: 1 });
+  assert.equal(Synth.part('nope').id, 'lead');
+  assert.equal(Synth.catsFor('bass')[0][0], 'bass'); assert.equal(Synth.catsFor('pad')[0][0], 'chords');
+  assert.deepEqual(Synth.catsFor('lead').slice(-2).map(c => c[0]), ['bass', 'chords']);
+  assert.equal(Synth.catsFor('lead').length, Synth.CATS.length);
+  for (const c of ['bass', 'chords']) assert.ok(Synth.PRESETS.filter(p => p.cat === c).length >= 8, c);
+  for (const p of Synth.PRESETS.filter(p => p.cat === 'bass')) assert.equal(p.p.width, 0, p.id + ' keeps the low end centred');
+});
+
+test('samples: ids are sanitised and the pictures read registered data', () => {
+  assert.equal(Synth.normalize({ sample: '<script>' }).sample, '');
+  assert.equal(Synth.normalize({ sample: 'sabc123', wave: 'sample' }).sample, 'sabc123');
+  const p = Synth.normalize({ wave: 'sample', sample: 'stest', sroot: 69, sloop: 'on' });
+  Synth.setSample('stest', { data: Float32Array.from({ length: 100 }, (_, i) => i / 100), sr: 44100 });
+  assert.equal(Synth.toneAt(p, 50 / 44100, 440), 0.5, 'at its own note the file plays at normal speed');
+  assert.equal(Synth.toneAt(p, 25 / 44100, 880), 0.5, 'an octave up plays twice as fast');
+  assert.ok(/^Sample/.test(Synth.describe(p).tone));
+  Synth.setSample('stest', null);
+  assert.ok(/none loaded/.test(Synth.describe(p).tone));
 });

@@ -1,6 +1,6 @@
 // Standard MIDI file (type 1) export for the groovebox.
 // One bar per chord in the progression; drums on channel 10, bass/lead/chords on 1-3.
-function exportMidi(S, { semis, bassBase, leadOct = 0 }) {
+function exportMidi(S, { semis, bassBase, leadOct = 0, bassOct = 0, padOct = 0 }) {
   const PPQ = 96, STEP = PPQ / 4, BAR = STEP * 16, bars = S.prog.length;
   const DRUM = { kick: 36, clap: 38, hat: 42, ohat: 46 };
   const tracks = { Drums: [], Bass: [], Lead: [], Chords: [] };
@@ -14,12 +14,12 @@ function exportMidi(S, { semis, bassBase, leadOct = 0 }) {
       const t = o + st * STEP;
       for (const id in DRUM) if (S.pat[id][st] && !S.mute[id]) add('Drums', 9, t, DRUM[id], S.pat[id][st], STEP / 2);
       const bn = S.pat.bass[st];
-      if (bn && !S.mute.bass) add('Bass', 0, t, bassBase() + semis(r + bn.d), bn.v, bn.len * STEP - 2);
+      if (bn && !S.mute.bass) add('Bass', 0, t, bassBase() + bassOct + semis(r + bn.d), bn.v, bn.len * STEP - 2);
       const ln = S.pat.lead[st];
       if (ln && !S.mute.lead) add('Lead', 1, t, bassBase() + 36 + leadOct + semis(r + ln.d), ln.v, ln.len * STEP - 2);
       if (S.pat.pad[st] && !S.mute.pad) {
         let nx = st + 1; while (nx < 16 && !S.pat.pad[nx]) nx++;
-        [0, 2, 4].forEach(k => add('Chords', 2, t, bassBase() + 24 + semis(r + k), 0.7, (nx - st) * STEP - 2));
+        [0, 2, 4].forEach(k => add('Chords', 2, t, bassBase() + 24 + padOct + semis(r + k), 0.7, (nx - st) * STEP - 2));
       }
     }
   }

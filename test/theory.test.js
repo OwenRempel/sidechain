@@ -75,3 +75,23 @@ test('melody phrases fill whole bars', () => {
   }
   T.SHAPES.forEach(s => assert.equal(beats(s.notes), 5.5, s.name));
 });
+
+test('takeToPattern snaps a played bar onto the lead grid', () => {
+  const step = 0.125, sc = [0, 2, 4, 5, 7, 9, 11], base = 72;   // C major, degree 0 = C5
+  const notes = [
+    { n: 72, v: 1, t: 0.01, end: 0.24 },          // C on step 0, two steps long
+    { n: 76, v: 0.5, t: 0.26, end: 0.3 },         // E on step 2
+    { n: 77, v: 0.9, t: 0.5, end: 2 },            // F held long, cut at the next note
+    { n: 78, v: 0.9, t: 0.99, end: 1.1 },         // F# (out of key) snaps to a scale note
+    { n: 60, v: 0.9, t: 1.0, end: 1.1 },          // lower note on the same step loses
+    { n: 79, v: 0.9, t: 3, end: 3.1 },            // after the bar: dropped
+  ];
+  const pat = T.takeToPattern(notes, { t0: 0, step, sc, base, root: 0 });
+  assert.deepEqual(pat[0], { d: 0, len: 2, v: 1 });
+  assert.deepEqual(pat[2], { d: 2, len: 1, v: 0.5 });
+  assert.equal(pat[4].d, 3); assert.equal(pat[4].len, 4);
+  assert.ok([3, 4].includes(pat[8].d));
+  assert.equal(pat.filter(Boolean).length, 4);
+  // relative to the chord root: on chord IV (degree 3), F is d 0
+  assert.equal(T.takeToPattern([{ n: 77, v: 1, t: 0, end: 0.1 }], { t0: 0, step, sc, base, root: 3 })[0].d, 0);
+});

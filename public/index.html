@@ -8,7 +8,7 @@
 <div class="wrap">
   <header>
     <h1>SIDE<b>CHAIN</b></h1>
-    <nav class="nav"><a href="index.html" aria-current="page">Groovebox</a><a href="lab.html">Theory Lab</a></nav>
+    <nav class="nav"><a href="index.html" aria-current="page">Groovebox</a><a href="synth.html">Synth</a><a href="lab.html">Theory Lab</a></nav>
     <div class="pos">BAR <span id="barN">1</span> · <span id="secN">Loop</span></div>
   </header>
 
@@ -39,7 +39,9 @@
       <button class="btn sm" id="synTry">▶ Try</button>
       <button class="btn sm" id="synSave">Save</button>
       <button class="btn sm" id="synDel" hidden>Delete</button>
+      <button class="btn sm" id="synPop" title="Open the synth on its own page with a keyboard">Pop out ↗</button>
     </header>
+    <div class="seg part" role="group" aria-label="Which sound to edit" id="synPart"></div>
     <p class="tip" id="synWho"></p>
     <div class="sviz">
       <figure><canvas id="vzWave" aria-hidden="true"></canvas><figcaption><b>Wave</b> <span id="vcWave"></span></figcaption></figure>
@@ -64,6 +66,9 @@
 
 <script src="js/theory.js"></script>
 <script src="js/synth.js"></script>
+<script src="js/leadvoice.js"></script>
+<script src="js/samples.js"></script>
+<script src="js/synthpanel.js"></script>
 <script src="js/midi.js"></script>
 <script src="js/groovebox.js"></script>
 </body></html>

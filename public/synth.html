@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sidechain Synth</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="css/app.css">
+</head><body class="synpage">
+
+<div class="wrap">
+  <header>
+    <h1>SIDE<b>CHAIN</b></h1>
+    <nav class="nav"><a href="index.html">Groovebox</a><a href="synth.html" aria-current="page">Synth</a><a href="lab.html">Theory Lab</a></nav>
+  </header>
+
+  <section class="panel synth" id="synth" aria-labelledby="synH">
+    <div class="stick">
+      <header><span class="lbl" id="synH">Lead synth</span>
+        <select id="synPreset" aria-label="Lead sound preset"></select>
+        <button class="btn sm" id="synTry">▶ Try</button>
+        <button class="btn sm" id="synSave">Save</button>
+        <button class="btn sm" id="synDel" hidden>Delete</button>
+      </header>
+      <div class="seg part" role="group" aria-label="Which sound to edit" id="synPart"></div>
+      <p class="tip" id="synWho"></p>
+      <div class="sviz">
+        <figure><canvas id="vzWave" aria-hidden="true"></canvas><figcaption><b>Wave</b> <span id="vcWave"></span></figcaption></figure>
+        <figure><canvas id="vzSpec" aria-hidden="true"></canvas><figcaption><b>Brightness</b> <span id="vcSpec"></span></figcaption></figure>
+        <figure><canvas id="vzEnv" aria-hidden="true"></canvas><figcaption><b>Each note</b> <span id="vcEnv"></span></figcaption></figure>
+      </div>
+    </div>
+    <div class="seg mode" role="group" aria-label="Controls" id="synMode"><button data-m="simple">Simple</button><button data-m="all">All controls</button></div>
+    <div class="ctl" id="synSimple"></div>
+    <div class="sgrps" id="synGroups" hidden></div>
+    <p class="tip">Changes save straight into your Groovebox song. Keep this page open next to the Groovebox and the sound updates as you go.</p>
+  </section>
+</div>
+
+<div class="dock" id="dock">
+  <div class="dock-bar">
+    <button class="pm" id="octDn" aria-label="Keyboard octave down">−</button><output id="octN"></output><button class="pm" id="octUp" aria-label="Keyboard octave up">+</button>
+    <span class="tip" id="inKey"></span>
+    <button class="btn sm" id="midiBtn" title="Play with a USB or Bluetooth MIDI keyboard">MIDI keyboard</button>
+  </div>
+  <div class="dock-bar arp">
+    <label>Arp <select id="arpMode" aria-label="Arpeggiator"><option value="off">Off</option><option value="up">Up</option><option value="down">Down</option><option value="updown">Up &amp; down</option><option value="random">Random</option></select></label>
+    <span id="arpOpts"><select id="arpRate" aria-label="Arp speed"><option value="2">1/8</option><option value="4">1/16</option><option value="3">1/8 triplet</option></select>
+    <select id="arpOct" aria-label="Arp octaves"><option value="1">1 oct</option><option value="2">2 oct</option><option value="3">3 oct</option></select>
+    <button class="btn sm" id="arpHold" aria-pressed="false" title="Keep playing after you let go">Hold</button></span>
+    <button class="btn sm rec" id="recBtn" title="Record one bar of what you play into the Groovebox lead">● Record</button>
+    <button class="btn sm" id="recUndo" hidden>Undo</button>
+    <span class="tip" id="recMsg"></span>
+    <span class="tip">Hold a chord and the arp plays its notes one by one, in time with your song.</span>
+  </div>
+  <div class="kb" id="kb" aria-label="Keyboard"></div>
+</div>
+
+<script src="js/theory.js"></script>
+<script src="js/synth.js"></script>
+<script src="js/leadvoice.js"></script>
+<script src="js/samples.js"></script>
+<script src="js/synthpanel.js"></script>
+<script src="js/synthpage.js"></script>
+</body></html>
