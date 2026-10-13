@@ -29,45 +29,45 @@ function arp(){
 const base=()=>({kick:D16(),clap:D16(),hat:D16(),ohat:D16(),bass:M16(),lead:M16(),pad:D16()});
 
 const STYLES={
-  house:{label:'House',bpm:124,scales:['minor','dorian'],progs:[[0,5,2,6],[0,3,0,4],[0,6,5,6],[3,4,0,0]],swing:.3,wobble:0,space:.3,echo:.2,
-    sound:{kickDecay:.45,kickEnd:50,bassWave:'sawtooth',bassDetune:6,bassCut:220,bassEnv:1400,bassDecay:.08,bassQ:6,leadWave:'square',leadVoices:2,leadDetune:8,leadCut:1800,padCut:1600},
+  house:{lead:'pluck',label:'House',bpm:124,scales:['minor','dorian'],progs:[[0,5,2,6],[0,3,0,4],[0,6,5,6],[3,4,0,0]],swing:.3,wobble:0,space:.3,echo:.2,
+    sound:{kickDecay:.45,kickEnd:50,bassWave:'sawtooth',bassDetune:6,bassCut:220,bassEnv:1400,bassDecay:.08,bassQ:6,padCut:1600},
     gen(){const p=base();at(p.kick,[0,4,8,12]);at(p.clap,[4,12]);at(p.ohat,[2,6,10,14],.8);
       for(let i=0;i<16;i++)if(chance(.55))p.hat[i]=i%2?.5:.3; if(chance(.4))p.clap[15]=.5;
       pick([[2,6,10,14],[2,3,6,10,11,14],[0,3,6,9,12,14],[2,5,8,10,13]]).forEach(i=>p.bass[i]=note(pick([0,0,0,7,4]),1,i%4===2?1:.8));
       euclid(ri(3,5),16,ri(0,2)).forEach(i=>p.lead[i]=note(pick(CT),1,chance(.5)?1:.7));
       if(chance(.5))p.pad[0]=1;else at(p.pad,pick([[3,10],[2,6,10,14],[0,6,12]]));return p}},
-  techno:{label:'Techno',bpm:130,scales:['phrygian','minor'],progs:[[0,0,0,0],[0,0,5,0],[0,1,0,1]],swing:.08,wobble:0,space:.25,echo:.35,
-    sound:{kickDecay:.55,kickEnd:42,bassWave:'sawtooth',bassDetune:4,bassCut:160,bassEnv:900,bassDecay:.05,bassQ:10,leadWave:'square',leadVoices:1,leadDetune:0,leadCut:1200,padCut:900},
+  techno:{lead:'acid',label:'Techno',bpm:130,scales:['phrygian','minor'],progs:[[0,0,0,0],[0,0,5,0],[0,1,0,1]],swing:.08,wobble:0,space:.25,echo:.35,
+    sound:{kickDecay:.55,kickEnd:42,bassWave:'sawtooth',bassDetune:4,bassCut:160,bassEnv:900,bassDecay:.05,bassQ:10,padCut:900},
     gen(){const p=base();at(p.kick,[0,4,8,12]);if(chance(.6))at(p.clap,[4,12]);at(p.ohat,[2,6,10,14],.6);
       for(let i=0;i<16;i++)p.hat[i]=i%4===2?.8:i%2?.5:.3;
       for(let i=0;i<16;i++)if(i%4&&chance(.85))p.bass[i]=note(0,1,i%4===2?1:.7);
       euclid(ri(3,5),16,ri(0,3)).forEach(i=>p.lead[i]=note(pick([0,0,2,7]),1,.9));
       if(chance(.5))at(p.pad,euclid(3,16,ri(0,2)));return p}},
-  trance:{label:'Trance',bpm:138,scales:['minor'],progs:[[0,5,2,6],[5,6,0,0],[0,5,3,4]],swing:0,wobble:0,space:.45,echo:.35,
-    sound:{kickDecay:.4,kickEnd:50,bassWave:'sawtooth',bassDetune:8,bassCut:260,bassEnv:1200,bassDecay:.07,bassQ:4,leadWave:'sawtooth',leadVoices:5,leadDetune:22,leadCut:4000,padCut:2200},
+  trance:{lead:'supersaw',label:'Trance',bpm:138,scales:['minor'],progs:[[0,5,2,6],[5,6,0,0],[0,5,3,4]],swing:0,wobble:0,space:.45,echo:.35,
+    sound:{kickDecay:.4,kickEnd:50,bassWave:'sawtooth',bassDetune:8,bassCut:260,bassEnv:1200,bassDecay:.07,bassQ:4,padCut:2200},
     gen(){const p=base();at(p.kick,[0,4,8,12]);at(p.clap,[4,12]);at(p.ohat,[2,6,10,14],.8);
       for(let i=0;i<16;i++)if(i%2&&chance(.5))p.hat[i]=.3;
       for(let i=0;i<16;i++)if(i%4)p.bass[i]=note(0,1,i%4===2?1:.75);
       p.lead=arp();p.pad[0]=1;return p}},
-  synthwave:{label:'Synthwave',bpm:100,scales:['minor'],progs:[[0,5,2,6],[0,6,5,6],[5,6,0,0]],swing:0,wobble:0,space:.45,echo:.4,
-    sound:{kickDecay:.5,kickEnd:48,bassWave:'sawtooth',bassDetune:10,bassCut:300,bassEnv:1000,bassDecay:.15,bassQ:3,leadWave:'square',leadVoices:2,leadDetune:10,leadCut:2600,padCut:1800},
+  synthwave:{lead:'brass',label:'Synthwave',bpm:100,scales:['minor'],progs:[[0,5,2,6],[0,6,5,6],[5,6,0,0]],swing:0,wobble:0,space:.45,echo:.4,
+    sound:{kickDecay:.5,kickEnd:48,bassWave:'sawtooth',bassDetune:10,bassCut:300,bassEnv:1000,bassDecay:.15,bassQ:3,padCut:1800},
     gen(){const p=base();at(p.kick,chance(.5)?[0,8,10]:[0,8]);at(p.clap,[4,12]);for(let i=0;i<16;i+=2)p.hat[i]=i%4?.6:.4;if(chance(.5))p.ohat[14]=.7;
       for(let i=0;i<16;i+=2)p.bass[i]=note(i%4?7:0,1,.9);p.lead=melody(ri(5,7));p.pad[0]=1;return p}},
-  dubstep:{label:'Dubstep',bpm:140,scales:['phrygian','minor'],progs:[[0,0,5,6],[0,0,0,0],[0,5,0,6]],swing:0,wobble:.65,space:.3,echo:.25,
-    sound:{kickDecay:.5,kickEnd:45,bassWave:'sawtooth',bassDetune:14,bassCut:200,bassEnv:400,bassDecay:.2,bassQ:12,leadWave:'sawtooth',leadVoices:3,leadDetune:15,leadCut:3000,padCut:1500},
+  dubstep:{lead:'squarelead',label:'Dubstep',bpm:140,scales:['phrygian','minor'],progs:[[0,0,5,6],[0,0,0,0],[0,5,0,6]],swing:0,wobble:.65,space:.3,echo:.25,
+    sound:{kickDecay:.5,kickEnd:45,bassWave:'sawtooth',bassDetune:14,bassCut:200,bassEnv:400,bassDecay:.2,bassQ:12,padCut:1500},
     gen(){const p=base();at(p.kick,[0]);if(chance(.6))p.kick[pick([10,11,3])]=.9;p.clap[8]=1;for(let i=0;i<16;i+=2)if(chance(.7))p.hat[i]=.4;if(chance(.4))p.ohat[6]=.6;
       pick([[[0,6],[6,2],[8,6],[14,2]],[[0,8],[8,4],[12,4]],[[0,3],[3,3],[6,2],[8,8]],[[0,4],[4,4],[8,4],[12,4]]])
         .forEach(([s,l])=>p.bass[s]=note(pick([0,0,1,-2,4]),l,1,pick([1,2,3,4,6])));
       p.lead=melody(ri(2,4),4,0,7);p.pad[0]=1;return p}},
-  dnb:{label:'Drum & Bass',bpm:172,scales:['minor','dorian'],progs:[[0,0,5,6],[0,5,3,4],[0,0,6,6]],swing:0,wobble:0,space:.35,echo:.3,
-    sound:{kickDecay:.35,kickEnd:55,bassWave:'sawtooth',bassDetune:22,bassCut:380,bassEnv:300,bassDecay:.3,bassQ:5,leadWave:'triangle',leadVoices:2,leadDetune:6,leadCut:3500,padCut:2000},
+  dnb:{lead:'flute',label:'Drum & Bass',bpm:172,scales:['minor','dorian'],progs:[[0,0,5,6],[0,5,3,4],[0,0,6,6]],swing:0,wobble:0,space:.35,echo:.3,
+    sound:{kickDecay:.35,kickEnd:55,bassWave:'sawtooth',bassDetune:22,bassCut:380,bassEnv:300,bassDecay:.3,bassQ:5,padCut:2000},
     gen(){const p=base();at(p.kick,chance(.5)?[0,10]:[0,7,10]);at(p.clap,[4,12]);if(chance(.5))p.clap[pick([7,9,15])]=.4;
       for(let i=0;i<16;i++)p.hat[i]=i%2?(chance(.4)?.3:0):.6;if(chance(.5))p.ohat[14]=.7;
       pick([[[0,6],[6,4],[10,6]],[[0,10],[10,6]],[[0,4],[6,4],[10,4],[14,2]]]).forEach(([s,l])=>p.bass[s]=note(pick([0,0,5,-2]),l,1));
       p.lead=melody(ri(3,5),4,0,9);p.pad[0]=1;return p}},
-  futurebass:{label:'Future Bass',bpm:128,scales:['major'],progs:[[3,4,5,0],[0,4,5,3],[5,3,0,4],[3,4,2,5]],swing:.12,wobble:0,space:.5,echo:.35,
-    // Mello x TFR: half-time drums, pumping supersaw chord stabs, sine "chime" lead with a pitch blip
-    sound:{kickDecay:.45,kickEnd:50,bassWave:'sawtooth',bassDetune:10,bassCut:320,bassEnv:700,bassDecay:.2,bassQ:3,leadWave:'sine',leadVoices:2,leadDetune:5,leadCut:7000,leadBlip:true,leadOct:12,padCut:3200},
+  futurebass:{lead:'chime',label:'Future Bass',bpm:128,scales:['major'],progs:[[3,4,5,0],[0,4,5,3],[5,3,0,4],[3,4,2,5]],swing:.12,wobble:0,space:.5,echo:.35,
+    // Mello x TFR: half-time drums, pumping supersaw chord stabs, FM "chime" lead with a pitch blip
+    sound:{kickDecay:.45,kickEnd:50,bassWave:'sawtooth',bassDetune:10,bassCut:320,bassEnv:700,bassDecay:.2,bassQ:3,padCut:3200},
     gen(){const p=base();at(p.kick,pick([[0,10],[0,3,10],[0,7,10]]));p.clap[8]=1;if(chance(.4))p.clap[15]=.4;
       for(let i=0;i<16;i+=2)p.hat[i]=i%4?.5:.3;if(chance(.5))at(p.hat,[13,14,15],.35);
       pick([[[0,8],[8,8]],[[0,6],[6,2],[8,8]],[[0,3],[3,5],[8,8]]]).forEach(([s,l])=>p.bass[s]=note(0,l,1));
@@ -76,14 +76,17 @@ const STYLES={
 
 let S;
 const defaultSections=()=>Theory.ARRANGEMENT.map(s=>({...s,tracks:[...s.tracks]}));
-function fresh(style,key){
-  const st=STYLES[style];
+const presetSynth=id=>Synth.normalize((Synth.byId(id)||Synth.PRESETS[0]).p);
+// keepSynth: New track keeps the lead sound you dialled in; picking a style loads that style's lead preset.
+function fresh(style,key,keepSynth){
+  const st=STYLES[style],synth=keepSynth&&S?.synth?{synth:S.synth,synthId:S.synthId}:{synth:presetSynth(st.lead),synthId:st.lead};
   return {style,key:key??pick([0,2,5,7,9,4]),scale:pick(st.scales),prog:pick(st.progs).slice(),bpm:st.bpm,swing:st.swing,cutoff:1,wobble:st.wobble,
-    space:st.space,echo:st.echo,vol:.8,arrange:S?.arrange||false,sections:S?.sections||defaultSections(),sound:{...st.sound},pat:st.gen(),mute:S?.mute||{}};
+    space:st.space,echo:st.echo,vol:.8,arrange:S?.arrange||false,sections:S?.sections||defaultSections(),sound:{...st.sound},...synth,pat:st.gen(),mute:S?.mute||{}};
 }
 try{const s=JSON.parse(localStorage.getItem('sidechain-v1'));if(s&&s.pat&&STYLES[s.style])S=s}catch(e){}
 if(!S)S=fresh('futurebass',0);
 if(!S.sections)S.sections=defaultSections();
+if(!S.synth){S.synthId=STYLES[S.style].lead;S.synth=presetSynth(S.synthId)}else S.synth=Synth.normalize(S.synth);
 try{const h=JSON.parse(localStorage.getItem('sidechain-handoff'));if(h){Object.assign(S,h);localStorage.removeItem('sidechain-handoff')}}catch(e){}
 function save(){try{localStorage.setItem('sidechain-v1',JSON.stringify(S))}catch(e){}}
 
@@ -91,6 +94,7 @@ function save(){try{localStorage.setItem('sidechain-v1',JSON.stringify(S))}catch
 const semis=d=>{const sc=SCALES[S.scale],o=Math.floor(d/7),i=((d%7)+7)%7;return sc[i]+12*o};
 const mtof=m=>440*Math.pow(2,(m-69)/12);
 const bassBase=()=>36+(S.key>=7?S.key-12:S.key);
+const leadNote=d=>bassBase()+36+12*S.synth.oct+semis(d);
 function chordName(r){const rs=semis(r),t=semis(r+2)-rs,f=semis(r+4)-rs;return NOTE[((S.key+rs)%12+12)%12]+(t===3?(f===6?'°':'m'):'')}
 function roman(r){const rs=semis(r),t=semis(r+2)-rs,f=semis(r+4)-rs,n=['I','II','III','IV','V','VI','VII'][((r%7)+7)%7];return t===3?n.toLowerCase()+(f===6?'°':''):n}
 
@@ -158,12 +162,26 @@ function bass(t,f,dur,v,w){
   lp.connect(g);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v*.42,t+.005);g.gain.setValueAtTime(v*.42,t+dur);g.gain.linearRampToValueAtTime(0,t+dur+.05);
   g.connect(musicBus);
 }
+// Lead voice built from S.synth (see synth.js): unison osc + layer osc, FM bell, filter + envelope, amp ADSR, LFO.
 function lead(t,f,dur,v){
-  const sd=S.sound,n=sd.leadVoices,g=ctx.createGain(),lp=ctx.createBiquadFilter(),end=t+dur+.2;lp.type='lowpass';lp.Q.value=2;
-  for(let k=0;k<n;k++){const o=ctx.createOscillator();o.type=sd.leadWave;if(sd.leadBlip){o.frequency.setValueAtTime(f*1.12,t);o.frequency.exponentialRampToValueAtTime(f,t+.045)}else o.frequency.value=f;o.detune.value=n>1?(k/(n-1)*2-1)*sd.leadDetune:0;o.connect(lp);o.start(t);o.stop(end)}
-  lp.frequency.setValueAtTime(sd.leadCut*2.5,t);lp.frequency.setTargetAtTime(sd.leadCut,t+.003,.09);
-  const lvl=v*.16/Math.sqrt(n);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(lvl,t+.005);g.gain.setTargetAtTime(lvl*.6,t+.01,.15);
-  g.gain.setValueAtTime(lvl*.6,t+dur);g.gain.linearRampToValueAtTime(0,t+dur+.12);lp.connect(g).connect(leadOut);
+  const p=S.synth,att=Math.max(.002,p.att),relAt=t+Math.max(dur,att),end=relAt+p.rel*5+.05,n=p.voices;
+  const mix=ctx.createGain(),flt=ctx.createBiquadFilter(),amp=ctx.createGain(),out=ctx.createGain(),oscs=[];
+  flt.type=p.ftype;flt.Q.value=p.res;mix.gain.value=1/(Math.sqrt(n)*(1+p.osc2*.7));
+  const osc=(wave,freq,det,lvl)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type=wave;g.gain.value=lvl;
+    if(p.blip){o.frequency.setValueAtTime(freq*Math.pow(2,p.blip/12),t);o.frequency.exponentialRampToValueAtTime(freq,t+.05)}else o.frequency.value=freq;
+    o.detune.value=det;o.connect(g).connect(mix);o.start(t);o.stop(end);oscs.push(o);return o};
+  const main=[];for(let k=0;k<n;k++)main.push(osc(p.wave,f,n>1?(k/(n-1)*2-1)*p.detune:0,1));
+  if(p.osc2>0)osc(p.wave2,f*Math.pow(2,p.semi2/12),0,p.osc2*Math.sqrt(n));
+  if(p.fm>0){const m=ctx.createOscillator(),mg=ctx.createGain(),mf=f*p.ratio,idx=mf*p.fm*6;m.frequency.value=mf;
+    mg.gain.setValueAtTime(idx,t);mg.gain.setTargetAtTime(idx*.08,t,p.fmDecay/3);m.connect(mg);main.forEach(o=>mg.connect(o.frequency));m.start(t);m.stop(end)}
+  const fTop=Math.min(18000,p.cut*(1+p.env*8));flt.frequency.setValueAtTime(fTop,t);flt.frequency.setTargetAtTime(p.cut,t+.003,p.fdec/3);
+  const pk=v*.2*p.vol;amp.gain.setValueAtTime(0,t);amp.gain.linearRampToValueAtTime(pk,t+att);amp.gain.setTargetAtTime(pk*p.sus,t+att,p.dec/3);
+  amp.gain.setTargetAtTime(0,relAt,p.rel/4);
+  if(p.lfo!=='off'&&p.lfoDepth>0){const l=ctx.createOscillator(),lg=ctx.createGain();l.frequency.value=p.lfoRate;l.connect(lg);l.start(t);l.stop(end);
+    if(p.lfo==='pitch'){lg.gain.value=p.lfoDepth*60;oscs.forEach(o=>lg.connect(o.detune))}
+    else if(p.lfo==='filter'){lg.gain.value=p.lfoDepth*p.cut*.9;lg.connect(flt.frequency)}
+    else{out.gain.value=1-p.lfoDepth/2;lg.gain.value=p.lfoDepth/2;lg.connect(out.gain)}}
+  mix.connect(flt).connect(amp).connect(out).connect(leadOut);
 }
 function pad(t,freqs,dur){
   const g=ctx.createGain(),lp=ctx.createBiquadFilter(),a=dur<.4?.01:Math.min(.35,dur*.25),end=t+dur+.7;lp.frequency.value=S.sound.padCut;
@@ -192,7 +210,7 @@ function scheduleStep(st,t,bar){
   else if(on('clap')&&P.clap[st])clap(t,P.clap[st]);
   if(on('ohat')&&P.ohat[st])hat(t,P.ohat[st],true);else if(on('hat')&&P.hat[st])hat(t,P.hat[st],false);
   const b=P.bass[st];if(b&&on('bass'))bass(t,mtof(bassBase()+semis(r+b.d)),b.len*sd*.92,b.v,b.w);
-  const l=P.lead[st];if(l&&on('lead'))lead(t,mtof(bassBase()+36+(S.sound.leadOct||0)+semis(r+l.d)),l.len*sd*.9,l.v);
+  const l=P.lead[st];if(l&&on('lead'))lead(t,mtof(leadNote(r+l.d)),l.len*sd*.9,l.v);
   if(P.pad[st]&&on('pad')){let nx=st+1;while(nx<16&&!P.pad[nx])nx++;pad(t,chordFreqs(r),(nx-st)*sd*.97)}
   q.push({st,bar,t,sec:sec?.name});
 }
@@ -305,15 +323,56 @@ function syncTop(){
   if(!playing)$('#secN').textContent=firstSec();
   $('#arr').classList.toggle('off',!S.arrange);
 }
-function renderEverything(){renderAll();renderProg();renderEditor();renderArr();syncMacros();syncTop();applyAudio();save()}
+/* lead synth panel: presets (built-in + your saved ones) and every Synth.PARAMS control, grouped */
+const USER_KEY='sidechain-presets';
+const userPresets=()=>{try{return JSON.parse(localStorage.getItem(USER_KEY))||{}}catch(e){return{}}};
+const setUserPresets=u=>{try{localStorage.setItem(USER_KEY,JSON.stringify(u))}catch(e){}};
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+function synthSource(){const id=S.synthId||'';if(id.startsWith('u:')){const u=userPresets()[id.slice(2)];return u&&{name:id.slice(2),who:'Your sound',p:Synth.normalize(u)}}
+  const b=Synth.byId(id);return b&&{name:b.name,who:b.who,p:b.p}}
+function renderSynthHead(){
+  const u=Object.keys(userPresets()),src=synthSource();
+  $('#synPreset').innerHTML=(src?'':'<option value="" selected>Custom</option>')+
+    `<optgroup label="Presets">${Synth.PRESETS.map(x=>`<option value="${x.id}"${x.id===S.synthId?' selected':''}>${esc(x.name)}</option>`).join('')}</optgroup>`+
+    (u.length?`<optgroup label="My sounds">${u.map(n=>`<option value="u:${esc(n)}"${'u:'+n===S.synthId?' selected':''}>${esc(n)}</option>`).join('')}</optgroup>`:'');
+  $('#synDel').hidden=!(S.synthId||'').startsWith('u:');
+  $('#synWho').textContent=src?`${src.who}${Synth.same(src.p,S.synth)?'':' · edited'}`:'Your own tweaks. Save to keep them.';
+}
+function ctlHTML(s){const v=S.synth[s.k];
+  if(s.type==='choice')return`<div class="seg" role="group" aria-label="${s.label}"><span class="lbl">${s.label}</span>${s.options.map(([val,l])=>`<button data-k="${s.k}" data-v="${val}" aria-pressed="${val===v}">${l}</button>`).join('')}</div>`;
+  return`<label class="mac" for="sy-${s.k}"><header><span class="lbl">${s.label}</span><output id="syo-${s.k}">${s.fmt(v)}</output></header>
+    <input type="range" id="sy-${s.k}" data-k="${s.k}" min="${s.log?0:s.min}" max="${s.log?1:s.max}" step="${s.log?.001:s.step}" value="${Synth.toSlider(s,v)}"></label>`}
+function renderSynth(){
+  renderSynthHead();
+  $('#synGroups').innerHTML=Synth.GROUPS.map(g=>`<fieldset class="sgrp"><legend>${g.name}</legend><p class="tip">${g.tip}</p>
+    <div class="ctl">${Synth.PARAMS.filter(s=>s.g===g.id).map(ctlHTML).join('')}</div></fieldset>`).join('');
+}
+function ensureAudio(){if(!ctx)initAudio();ctx.resume();return ctx.currentTime+.03}
+function audition(){if(playing)return;const t=ensureAudio();lead(t,mtof(leadNote(S.prog[0])),.32,1)}
+// Try: a short phrase over the first chord, so you hear the sound in context.
+function tryPhrase(){if(playing)return;const t=ensureAudio(),r=S.prog[0],sd=60/S.bpm/4;
+  pad(t,chordFreqs(r),sd*14);[[0,0,2],[2,2,1],[4,3,1],[7,4,2],[4,6,2],[2,8,1],[0,9,5]].forEach(([d,st,len])=>lead(t+st*sd*1.5,mtof(leadNote(r+d)),len*sd*1.4,st?.85:1))}
+function setSynth(k,v){S.synth[k]=v;renderSynthHead();save()}
+$('#synPreset').onchange=e=>{const id=e.target.value;if(!id)return;S.synthId=id;const src=synthSource();if(src)S.synth=Synth.normalize(src.p);renderSynth();save();audition()};
+$('#synTry').onclick=tryPhrase;
+$('#synSave').onclick=()=>{const cur=synthSource(),name=(prompt('Name this sound',cur&&S.synthId.startsWith('u:')?cur.name:(cur?cur.name+' (mine)':'My lead'))||'').trim().slice(0,40);if(!name)return;
+  const u=userPresets();u[name]={...S.synth};setUserPresets(u);S.synthId='u:'+name;renderSynthHead();save()};
+$('#synDel').onclick=()=>{const id=S.synthId||'';if(!id.startsWith('u:')||!confirm(`Delete "${id.slice(2)}"?`))return;const u=userPresets();delete u[id.slice(2)];setUserPresets(u);S.synthId='';renderSynthHead();save()};
+$('#synGroups').oninput=e=>{const k=e.target.dataset.k,s=k&&Synth.PARAMS.find(p=>p.k===k);if(!s||s.type==='choice')return;
+  const v=Synth.fromSlider(s,+e.target.value);setSynth(k,v);$('#syo-'+k).textContent=s.fmt(v)};
+$('#synGroups').onchange=e=>{if(e.target.type==='range')audition()};
+$('#synGroups').onclick=e=>{const b=e.target.closest('.seg button');if(!b)return;setSynth(b.dataset.k,b.dataset.v);
+  b.parentElement.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));audition()};
+
+function renderEverything(){renderAll();renderProg();renderEditor();renderArr();renderSynth();syncMacros();syncTop();applyAudio();save()}
 
 $('#key').innerHTML=NOTE.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
 $('#scale').innerHTML=Object.keys(SCALES).map(s=>`<option>${s}</option>`).join('');
 buildStyles();buildGrid();buildMacros();renderEverything();
 
-$('#midi').onclick=()=>exportMidi(S,{semis,bassBase,leadOct:S.sound.leadOct||0});
+$('#midi').onclick=()=>exportMidi(S,{semis,bassBase,leadOct:12*S.synth.oct});
 $('#play').onclick=()=>playing?stop():start();
-$('#gen').onclick=()=>{S=fresh(S.style,S.key);sel=null;renderEverything()};
+$('#gen').onclick=()=>{S=fresh(S.style,S.key,true);sel=null;renderEverything()};
 $('#arrange').onclick=()=>{S.arrange=!S.arrange;if(playing){bar=0}renderEverything()};
 $('#styles').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;S=fresh(b.dataset.s,S.key);sel=null;renderEverything()};
 $('#prog').onchange=e=>{const i=+e.target.dataset.i;S.prog[i]=+e.target.value;renderProg();renderEditor();save();
@@ -334,7 +393,7 @@ document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|SELECT|BUTT
 function preview(id,i){
   if(!ctx||playing)return;ctx.resume();const t=ctx.currentTime+.01,r=S.prog[0],sd=60/S.bpm/4,P=S.pat;
   ({kick:()=>kick(t,1),clap:()=>clap(t,1),hat:()=>hat(t,.7,false),ohat:()=>hat(t,.7,true),pad:()=>pad(t,chordFreqs(r),.4),
-    bass:()=>bass(t,mtof(bassBase()+semis(r+P.bass[i].d)),sd*P.bass[i].len,1),lead:()=>lead(t,mtof(bassBase()+36+(S.sound.leadOct||0)+semis(r+P.lead[i].d)),sd*P.lead[i].len,1)})[id]();
+    bass:()=>bass(t,mtof(bassBase()+semis(r+P.bass[i].d)),sd*P.bass[i].len,1),lead:()=>lead(t,mtof(leadNote(r+P.lead[i].d)),sd*P.lead[i].len,1)})[id]();
 }
 $('#grid').onclick=e=>{
   const mute=e.target.closest('.mute'),dice=e.target.closest('.dice'),cell=e.target.closest('.cell');
