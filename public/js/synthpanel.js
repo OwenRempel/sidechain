@@ -36,8 +36,19 @@ function createSynthPanel(root, o) {
     $('#synWho').textContent = src ? `${src.who}${Synth.same(src.p, m.synth) ? '' : ' · edited'}` : 'Your own tweaks. Save to keep them.';
     drawAll();
   }
+  const hasSamples = typeof Samples !== 'undefined';
   function ctlHTML(s) {
     const v = M().synth[s.k];
+    if (s.when && !s.when(M().synth)) return '';
+    if (s.type === 'sample') {
+      const list = hasSamples ? Samples.list() : [], known = list.some(x => x.id === v);
+      return `<div class="seg samp"><span class="lbl">${s.label}</span><select data-sample aria-label="Sample">
+        ${known ? '' : `<option value="" selected>${list.length ? 'Pick a sample' : 'No samples yet'}</option>`}
+        ${list.map(x => `<option value="${esc(x.id)}"${x.id === v ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}
+        <option value="+">Load a file…</option></select>${known ? '<button class="btn sm" data-sdel>Delete</button>' : ''}
+        <input type="file" accept="audio/*" hidden data-sfile>
+        <small>A short sound works best: one sung "ooh", a piano note, a pluck, a vocal chop. Set Sample note to the note it plays so it lands in tune. Samples stay in this browser.</small></div>`;
+    }
     if (s.type === 'choice') return `<div class="seg" role="group" aria-label="${s.label}"><span class="lbl">${s.label}</span>${s.options.map(([val, l]) => `<button data-k="${s.k}" data-v="${val}" aria-pressed="${val === v}">${l}</button>`).join('')}</div>`;
     return `<label class="mac" for="sy-${s.k}"><header><span class="lbl">${s.label}</span><output id="syo-${s.k}">${s.fmt(v)}</output></header>
       <input type="range" id="sy-${s.k}" data-k="${s.k}" min="${s.log ? 0 : s.min}" max="${s.log ? 1 : s.max}" step="${s.log ? 0.001 : s.step}" value="${Synth.toSlider(s, v)}"></label>`;
@@ -118,9 +129,15 @@ function createSynthPanel(root, o) {
 
   /* events */
   const set = (k, v) => { M().synth[k] = v; renderHead(); o.persist(); };
-  $('#synPreset').onchange = e => { const id = e.target.value; if (!id) return; M().synthId = id; const src = source(); if (src) M().synth = Synth.normalize(src.p); render(); o.persist(); o.audition(); };
+  const showSample = () => { const id = M().synth.wave === 'sample' && M().synth.sample; if (hasSamples && id) Samples.forPictures(id).then(() => drawAll()); };
+  if (hasSamples) {
+    Samples.refresh().then(() => { if (M().synth.wave === 'sample') render(); showSample(); });
+    window.addEventListener('storage', e => { if (e.key === 'sidechain-samples') Samples.refresh().then(() => { if (M().synth.wave === 'sample') render(); }); });
+  }
+  const pickSample = id => { set('sample', id); render(); showSample(); setTimeout(() => o.audition(), 50); };
+  $('#synPreset').onchange = e => { const id = e.target.value; if (!id) return; M().synthId = id; const src = source(); if (src) M().synth = Synth.normalize(src.p); render(); showSample(); o.persist(); o.audition(); };
   $('#synTry').onclick = () => o.tryPhrase();
-  if ($('#synPart')) $('#synPart').onclick = e => { const b = e.target.closest('button'); if (!b || !o.setPart) return; o.setPart(b.dataset.part); render(); };
+  if ($('#synPart')) $('#synPart').onclick = e => { const b = e.target.closest('button'); if (!b || !o.setPart) return; o.setPart(b.dataset.part); render(); showSample(); };
   $('#synSave').onclick = () => {
     const m = M(), cur = source(), name = (prompt('Name this sound', cur && (m.synthId || '').startsWith('u:') ? cur.name : (cur ? cur.name + ' (mine)' : 'My ' + part().name.toLowerCase())) || '').trim().slice(0, 40);
     if (!name) return; const u = userPresets(); u[name] = { ...m.synth }; setUserPresets(u); m.synthId = 'u:' + name; renderHead(); o.persist();
@@ -137,8 +154,18 @@ function createSynthPanel(root, o) {
   };
   ['#synSimple', '#synGroups'].forEach(id => {
     $(id).oninput = onRange;
-    $(id).onchange = e => { if (e.target.type === 'range') o.audition(); };
-    $(id).onclick = e => { const b = e.target.closest('.seg button'); if (!b) return; set(b.dataset.k, b.dataset.v); b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); o.audition(); };
+    $(id).onchange = async e => {
+      const t = e.target;
+      if (t.type === 'range') return o.audition();
+      if (t.dataset.sample !== undefined) { if (t.value === '+') { t.value = M().synth.sample; t.parentElement.querySelector('[data-sfile]').click(); } else if (t.value) pickSample(t.value); return; }
+      if (t.dataset.sfile !== undefined && t.files[0]) { try { pickSample(await Samples.add(t.files[0])); } catch (err) { alert(err.message && /15 MB/.test(err.message) ? err.message : 'That file could not be read as audio. Try a WAV or MP3.'); } }
+    };
+    $(id).onclick = async e => {
+      if (e.target.closest('[data-sdel]')) { const s = M().synth.sample, nm = (Samples.list().find(x => x.id === s) || {}).name; if (s && confirm(`Delete the sample "${nm}"? Sounds that use it will play a plain tone.`)) { await Samples.remove(s); set('sample', ''); render(); } return; }
+      const b = e.target.closest('.seg button[data-k]'); if (!b) return; set(b.dataset.k, b.dataset.v);
+      if (b.dataset.k === 'wave') { render(); showSample(); } else b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+      o.audition();
+    };
   });
   window.addEventListener('resize', () => drawAll());
   return { render, renderHead, tick };

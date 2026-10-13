@@ -129,6 +129,7 @@ function initAudio(){
   padOut=ctx.createGain();padOut.gain.value=.7;padOut.connect(musicBus);padOut.connect(revIn);
   // analysers feed the synth panel's live wave
   [['lead',leadOut],['bass',bassOut],['pad',padOut]].forEach(([id,n])=>{const a=ctx.createAnalyser();a.fftSize=2048;n.connect(a);partAn[id]=a});leadAn=partAn.lead;
+  loadSamples();
   noiseBuf=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate);const nd=noiseBuf.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=R()*2-1;
 }
 const cutHz=()=>150*Math.pow(20000/150,S.cutoff);
@@ -309,6 +310,8 @@ function syncTop(){
   if(!playing)$('#secN').textContent=firstSec();
   $('#arr').classList.toggle('off',!S.arrange);
 }
+// decode any samples the song's sounds use, so the first note already plays the file
+function loadSamples(){if(ctx&&typeof Samples!=='undefined')Synth.PARTS.forEach(({keys:[k]})=>{if(S[k].wave==='sample')Samples.load(ctx,S[k].sample)})}
 function ensureAudio(){if(!ctx)initAudio();ctx.resume();return ctx.currentTime+.03}
 /* synth panel (synthpanel.js) for the part picked in it: lead, bass or chords. The pop-out Synth page edits the same sounds through localStorage */
 const PART_KEY='sidechain-synth-part';
@@ -321,7 +324,7 @@ function tryPhrase(){if(playing)return;const t=ensureAudio(),r=S.prog[0],sd=60/S
   if(synPart==='pad'){S.prog.forEach((c,b)=>pad(t+b*sd*8,chordFreqs(c),sd*7.5));return}
   pad(t,chordFreqs(r),sd*14);[[0,0,2],[2,2,1],[4,3,1],[7,4,2],[4,6,2],[2,8,1],[0,9,5]].forEach(([d,st,len])=>lead(t+st*sd*1.5,mtof(leadNote(r+d)),len*sd*1.4,st?.85:1))}
 const partHz=()=>{const r=S.prog[0];return synPart==='bass'?mtof(bassNote(r)):synPart==='pad'?chordFreqs(r)[0]*Math.pow(2,S.padSynth.oct):mtof(leadNote(r))};
-const synthPanel=createSynthPanel($('#synth'),{model:()=>Synth.partView(S,synPart),persist:()=>save(),audition,tryPhrase,noteHz:partHz,
+const synthPanel=createSynthPanel($('#synth'),{model:()=>Synth.partView(S,synPart),persist:()=>{save();loadSamples()},audition,tryPhrase,noteHz:partHz,
   analyser:()=>partAn[synPart]||null,lastHz:()=>lastHz[synPart],sampleRate:()=>ctx?ctx.sampleRate:44100,
   part:()=>synPart,setPart:id=>{synPart=Synth.part(id).id;try{localStorage.setItem(PART_KEY,synPart)}catch(e){}}});
 const renderSynth=()=>synthPanel.render();
@@ -331,7 +334,7 @@ window.addEventListener('storage',e=>{
   if(e.key===PART_KEY&&e.newValue&&e.newValue!==synPart){synPart=Synth.part(e.newValue).id;return renderSynth()}
   if(e.key!=='sidechain-v1'||!e.newValue)return;
   try{const n=JSON.parse(e.newValue);let redraw=false;
-    Synth.PARTS.forEach(({keys:[k,kid]})=>{if(n[k]&&JSON.stringify(n[k])!==JSON.stringify(S[k])){S[k]=Synth.normalize(n[k]);S[kid]=n[kid];redraw=true}});if(redraw)renderSynth();
+    Synth.PARTS.forEach(({keys:[k,kid]})=>{if(n[k]&&JSON.stringify(n[k])!==JSON.stringify(S[k])){S[k]=Synth.normalize(n[k]);S[kid]=n[kid];redraw=true}});if(redraw){renderSynth();loadSamples()}
     ['lead','bass'].forEach(id=>{if(n.pat&&n.pat[id]&&JSON.stringify(n.pat[id])!==JSON.stringify(S.pat[id])){S.pat[id]=n.pat[id];sel=null;renderTrack(id);renderEditor()}})}catch(err){}
 });
 

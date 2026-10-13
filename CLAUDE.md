@@ -26,10 +26,11 @@ public/lab.html        Theory Lab page (Harmony + Rhythm tabs)
 public/css/app.css     shared tokens and components (dark hardware look, single theme)
 public/css/lab.css     lab-only styles
 public/js/groovebox.js sequencer, Web Audio synth engine, style generators (monolithic prototype)
-public/js/leadvoice.js startLead(ctx, dest, params, t, hz, vel) -> {release(at)}: the lead voice, shared by both pages
-public/js/synthpanel.js createSynthPanel(root, hooks): the lead synth panel UI + pictures, shared by both pages
-public/js/synthpage.js Synth page keyboard + audio; reads/writes only .synth/.synthId of localStorage['sidechain-v1'] and follows the Groovebox via the storage event
-public/js/synth.js     lead synth params, presets (with categories), Simple-view macros, and the maths behind the synth pictures (wave, spectrum, envelope); pure + tested. leadvoice.js plays it
+public/js/leadvoice.js startLead(ctx, dest, params, t, hz, vel) -> {release(at), glide(hz, at, time)}: the one voice for lead, bass and chords, shared by both pages. release() can be called again to move it later (mono legato)
+public/js/synthpanel.js createSynthPanel(root, hooks): the synth panel UI + pictures for one part (Lead / Bass / Chords switch), shared by both pages
+public/js/synthpage.js Synth page keyboard (velocity, mono/glide, arpeggiator, Record one bar into the lead or bass grid) + audio; writes only the three part sounds and pat.lead/pat.bass of localStorage['sidechain-v1'] and follows the Groovebox via the storage event
+public/js/synth.js     synth params, presets (with categories, incl. basses and chords), PARTS + partView, Simple-view macros, and the maths behind the synth pictures (wave, spectrum, envelope); pure + tested. leadvoice.js plays it
+public/js/samples.js   your own samples in IndexedDB (db 'sidechain', store 'samples'); decodes per AudioContext and hands data to Synth.setSample for the pictures
 public/js/midi.js      Standard MIDI File export (type 1, drums ch10)
 public/js/theory.js    pure theory data and helpers (no DOM/audio, unit-testable)
 public/js/lab.js       Theory Lab UI and preview audio
@@ -44,7 +45,8 @@ Plain ES scripts, no build step. Keep it that way until a feature needs a bundle
 - `prog`: array of **scale-degree indices** (0 = home), one chord per bar. Chord = degrees r, r+2, r+4.
 - `pat`: 16-step patterns. Drums are numbers (0 off, 0.5 soft, 1 full). `bass`/`lead` are `{d, len, v, w?}`, with `d` a scale degree relative to the current chord root and `w` the wobble rate multiplier.
 - The Lab hands a progression to the Groovebox via `localStorage['sidechain-handoff'] = {key, scale, prog}`.
-- Groovebox state persists in `localStorage['sidechain-v1']`. `S.synth` holds the lead synth params (keys in `Synth.PARAMS`), `S.synthId` the preset it came from (`u:<name>` for a saved one). Saved lead sounds live in `localStorage['sidechain-presets']`.
+- Groovebox state persists in `localStorage['sidechain-v1']`. `S.synth`, `S.bassSynth`, `S.padSynth` hold the lead, bass and chord sounds (keys in `Synth.PARAMS`); `S.synthId` / `S.bassSynthId` / `S.padSynthId` the preset each came from (`u:<name>` for a saved one). `Synth.PARTS` maps part -> keys. Saved sounds live in `localStorage['sidechain-presets']`. A sound with `wave: 'sample'` plays `sample` (an IndexedDB id) pitched from `sroot`. `S.sound` now only drives the kick.
+- Other keys: `sidechain-synth-part` (which part the panel edits), `sidechain-arp`, `sidechain-kb-oct[-bass|-pad]`, `sidechain-samples` (bumped when the sample list changes).
 
 ## Status
 
@@ -58,7 +60,7 @@ Done (v0.1, untested in a real browser session, so verify audio first):
 
 1. **Engine refactor:** move instruments out of groovebox.js into `engine.js` as `createEngine(ctx)` so it works with an `OfflineAudioContext`. Unlocks:
 2. **WAV export:** render N bars offline (and stems per track).
-3. **Synth layer (M1):** lead synth panel done (osc + unison, layer osc, FM bell, filter + env, ADSR, LFO, 11 presets, save/load your own). It has a Simple view (Brightness, Thickness, Pluck ↔ Swell, Movement, Octave) and All controls, plus pictures of the wave (live while the lead plays), overtones vs. filter, and the note's volume/brightness over time. Keep envAt() in synth.js in step with leadvoice.js when changing the voice. 28 presets in 5 categories; Drive and Air (noise) controls; pop-out Synth page with keyboard. Still to do: same panel for bass and chords. Originally: per-track synth panel with oscillator type, unison/detune, filter, ADSR, LFO, plus an FM bell layer for Marshmello-style chimes. Save/load presets.
+3. **Synth layer (M1):** done. One voice (leadvoice.js) for lead, bass and chords: osc + unison or a loaded sample, layer osc, sub, air, FM bell, filter + env + drive, ADSR, LFO, chorus, stereo width, mono + glide, velocity. Simple view (Brightness, Thickness, Pluck ↔ Swell, Movement, Octave) and All controls, pictures of the wave (live), overtones vs. filter, and volume/brightness over time. Keep envAt() in synth.js in step with leadvoice.js when changing the voice. 48 presets in 7 categories, each style starts with its own lead, bass and chord sound; the Wobble knob drives the bass filter LFO. Pop-out Synth page with keyboard, arpeggiator and Record. Next ideas: per-part effects sends, sample start/trim, more chord voicings.
 4. **Multi-bar patterns (M2):** 4-8 bar patterns, A/B/C/D bank, piano-roll-lite for lead/chords.
 5. **AI arranger UI (M3):** "Arrange with AI" button posts song state to `/api/arrange`, renders a section timeline, plays it back. Tighten the JSON schema and validate the response.
 6. **Lab extras (M7/M8):** function wheel and Tonnetz views, emotion map (bright/dark × tense/resolved), "what chord next?" suggestions in the Groovebox, note names as an optional overlay, kick + bass frequency lock view.

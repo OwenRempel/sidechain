@@ -33,8 +33,18 @@ const startLead = (() => {
       if (pan && ctx.createStereoPanner) { const sp = ctx.createStereoPanner(); sp.pan.value = pan; g.connect(sp).connect(mix); } else g.connect(mix);
       o.start(t); oscs.push(o); srcs.push(o); tuned.push([o.frequency, ratio]); return o;
     };
+    // Sample: the loaded file played back faster or slower so its own note (sroot) lands on f. Falls back to a triangle until it loads.
+    const buf = p.wave === 'sample' && startLead.getBuffer ? startLead.getBuffer(ctx, p.sample) : null;
+    const smp = (det, pan) => {
+      const s = ctx.createBufferSource(), g = ctx.createGain(), rate = f / (440 * Math.pow(2, (p.sroot - 69) / 12));
+      s.buffer = buf; s.loop = p.sloop === 'on'; s.detune.value = det;
+      if (p.blip) { s.playbackRate.setValueAtTime(rate * Math.pow(2, p.blip / 12), t); s.playbackRate.exponentialRampToValueAtTime(rate, t + 0.05); } else s.playbackRate.value = rate;
+      s.connect(g); g.gain.value = 1.4;
+      if (pan && ctx.createStereoPanner) { const sp = ctx.createStereoPanner(); sp.pan.value = pan; g.connect(sp).connect(mix); } else g.connect(mix);
+      s.start(t); srcs.push(s); oscs.push(s); tuned.push([s.playbackRate, rate / f]); return s;
+    };
     const main = [];
-    for (let k = 0; k < n; k++) { const s = n > 1 ? k / (n - 1) * 2 - 1 : 0; main.push(osc(p.wave, 1, s * p.detune, 1, s * width)); }
+    for (let k = 0; k < n; k++) { const s = n > 1 ? k / (n - 1) * 2 - 1 : 0; main.push(buf ? smp(s * p.detune, s * width) : osc(p.wave === 'sample' ? 'triangle' : p.wave, 1, s * p.detune, 1, s * width)); }
     if (p.osc2 > 0) osc(p.wave2, Math.pow(2, p.semi2 / 12), 0, p.osc2 * Math.sqrt(n), 0);
     if (p.sub > 0) osc('sine', 1, 0, p.sub * 1.2 * Math.sqrt(n), 0);   // plain sine on the note, for weight
     if (p.noise > 0) {   // "air": noise band-passed around the note so it follows the pitch
@@ -44,7 +54,7 @@ const startLead = (() => {
     }
     if (p.fm > 0) {
       const m = ctx.createOscillator(), mg = ctx.createGain(), mf = f * p.ratio, idx = mf * p.fm * 6; m.frequency.value = mf;
-      mg.gain.setValueAtTime(idx, t); mg.gain.setTargetAtTime(idx * 0.08, t, p.fmDecay / 3); m.connect(mg); main.forEach(o => mg.connect(o.frequency)); m.start(t); srcs.push(m); tuned.push([m.frequency, p.ratio]);
+      mg.gain.setValueAtTime(idx, t); mg.gain.setTargetAtTime(idx * 0.08, t, p.fmDecay / 3); m.connect(mg); main.forEach(o => o.frequency && mg.connect(o.frequency)); m.start(t); srcs.push(m); tuned.push([m.frequency, p.ratio]);
     }
     const fTop = Math.min(18000, p.cut * (1 + p.env * 8 * (0.3 + 0.7 * soft))); flt.frequency.setValueAtTime(fTop, t); flt.frequency.setTargetAtTime(p.cut, t + 0.003, p.fdec / 3);
     const pk = soft * 0.2 * p.vol; amp.gain.setValueAtTime(0, t); amp.gain.linearRampToValueAtTime(pk, t + att); amp.gain.setTargetAtTime(pk * p.sus, t + att, p.dec / 3);
@@ -78,7 +88,7 @@ const startLead = (() => {
       // glide(f2, at, time): slide every pitched part of the note to f2 (mono mode).
       glide(f2, at, time) {
         tuned.forEach(([prm, ratio]) => {
-          const to = Math.min(16000, f2 * ratio);
+          const to = Math.min(16000, f2 * ratio);   // for a sample, ratio turns Hz into playback rate
           prm.cancelScheduledValues(at); prm.setValueAtTime(prm.value, at);
           if (time > 0.002) prm.setTargetAtTime(to, at, time / 3); else prm.setValueAtTime(to, at);
         });

@@ -47,3 +47,16 @@ test('new playing and width params normalize to safe values', () => {
   assert.equal(p.mono, 'poly'); assert.equal(p.glide, 0.5); assert.equal(p.chorus, 0); assert.equal(p.width, 1); assert.equal(p.vel, Synth.BASE.vel);
   assert.equal(Synth.byId('acid').p.mono, 'mono');
 });
+
+test('sample wave plays the buffer at the right speed, or a triangle until it loads', () => {
+  const p = Synth.normalize({ wave: 'sample', sample: 'sx', sroot: 57, voices: 1 });
+  let ctx = fakeCtx(), made = [];
+  ctx.createBufferSource = () => { const s = { connect: n => n, start() {}, stop() {}, detune: { value: 0 }, playbackRate: { value: 1, setValueAtTime() {}, exponentialRampToValueAtTime() {} } }; made.push(s); return s; };
+  startLead.getBuffer = () => ({ fake: true });
+  startLead(ctx, {}, p, 0, 440, 1);
+  assert.ok(Math.abs(made[0].playbackRate.value - 2) < 1e-9, 'A4 from an A3 sample plays twice as fast');
+  startLead.getBuffer = () => null; ctx = fakeCtx(); const oscs = []; const co = ctx.createOscillator; ctx.createOscillator = () => { const o = co(); oscs.push(o); return o; };
+  startLead(ctx, {}, p, 0, 440, 1);
+  assert.equal(oscs[0].type, 'triangle');
+  delete startLead.getBuffer;
+});

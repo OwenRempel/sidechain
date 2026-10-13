@@ -1,7 +1,10 @@
 // Lead synth: parameter specs, presets and helpers. Pure data, no DOM or audio, so it is unit-testable.
 // The Groovebox's lead() voice reads these params; the synth panel is built from PARAMS.
 const Synth = (() => {
-  const WAVES = [['sine', 'Sine'], ['triangle', 'Tri'], ['square', 'Square'], ['sawtooth', 'Saw']];
+  const WAVES = [['sine', 'Sine'], ['triangle', 'Tri'], ['square', 'Square'], ['sawtooth', 'Saw'], ['sample', 'Sample']];
+  const WAVE2 = WAVES.slice(0, 4);
+  const LOOP = [['off', 'Once'], ['on', 'Loop']];
+  const NOTE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
   const FILTERS = [['lowpass', 'Low'], ['bandpass', 'Band'], ['highpass', 'High']];
   const LFO_TARGETS = [['off', 'Off'], ['pitch', 'Pitch'], ['filter', 'Filter'], ['amp', 'Volume']];
   const MODES = [['poly', 'Poly'], ['mono', 'Mono']];
@@ -14,7 +17,7 @@ const Synth = (() => {
 
   // Grouped so the panel can show one short "what it does" line per group.
   const GROUPS = [
-    { id: 'osc', name: 'Tone', tip: 'The raw sound. Sine is pure and soft, triangle hollow, square buzzy and retro, saw bright and rich. More voices plus spread = wider (the supersaw sound).' },
+    { id: 'osc', name: 'Tone', tip: 'The raw sound. Sine is pure and soft, triangle hollow, square buzzy and retro, saw bright and rich. Sample plays a sound file you load, pitched to each note. More voices plus spread = wider (the supersaw sound).' },
     { id: 'layer', name: 'Layer', tip: 'A second tone stacked on top. An octave up adds sparkle, a 5th sounds bigger, like a power chord. Sub adds a pure sine for weight (great on basses). Air mixes in a breathy hiss, like a flute or a whispered vocal.' },
     { id: 'bell', name: 'Bell (FM)', tip: 'One sine wobbling the pitch of another very fast makes metallic, bell-like overtones: the Marshmello chime. Ratio picks which overtones, Ring is how long they shimmer.' },
     { id: 'filter', name: 'Filter', tip: 'Shapes the brightness. Low-pass darkens, resonance adds a squelchy peak, and the envelope makes each note start bright then close down (that is a pluck). Drive pushes the sound into distortion for grit and bite.' },
@@ -27,11 +30,14 @@ const Synth = (() => {
   // type: 'choice' (buttons), 'range' (slider). log: slider moves exponentially between min and max.
   const PARAMS = [
     { k: 'wave', g: 'osc', label: 'Wave', type: 'choice', options: WAVES },
+    { k: 'sample', g: 'osc', label: 'Sample', type: 'sample', when: p => p.wave === 'sample' },
+    { k: 'sroot', g: 'osc', label: 'Sample note', min: 24, max: 96, step: 1, fmt: v => NOTE[v % 12] + (Math.floor(v / 12) - 1), when: p => p.wave === 'sample' },
+    { k: 'sloop', g: 'osc', label: 'Play', type: 'choice', options: LOOP, when: p => p.wave === 'sample' },
     { k: 'voices', g: 'osc', label: 'Voices', min: 1, max: 7, step: 1, fmt: v => String(v) },
     { k: 'detune', g: 'osc', label: 'Spread', min: 0, max: 50, step: 1, fmt: v => v + ' ct' },
     { k: 'oct', g: 'osc', label: 'Octave', min: -1, max: 2, step: 1, fmt: signed },
     { k: 'blip', g: 'osc', label: 'Pitch blip', min: 0, max: 12, step: 1, fmt: v => (v ? v + ' st' : 'off') },
-    { k: 'wave2', g: 'layer', label: 'Wave', type: 'choice', options: WAVES },
+    { k: 'wave2', g: 'layer', label: 'Wave', type: 'choice', options: WAVE2 },
     { k: 'osc2', g: 'layer', label: 'Level', min: 0, max: 1, step: 0.01, fmt: pct },
     { k: 'semi2', g: 'layer', label: 'Interval', min: -12, max: 24, step: 1, fmt: v => INTERVAL[v] || signed(v) + ' st' },
     { k: 'sub', g: 'layer', label: 'Sub', min: 0, max: 1, step: 0.01, fmt: v => (v ? pct(v) : 'off') },
@@ -61,7 +67,7 @@ const Synth = (() => {
   ];
 
   const BASE = {
-    wave: 'sawtooth', voices: 1, detune: 0, oct: 0, blip: 0,
+    wave: 'sawtooth', voices: 1, detune: 0, oct: 0, blip: 0, sample: '', sroot: 60, sloop: 'off',
     wave2: 'sine', osc2: 0, semi2: 12, noise: 0, sub: 0,
     fm: 0, ratio: 2, fmDecay: 0.3,
     ftype: 'lowpass', cut: 6000, res: 1, env: 0.3, fdec: 0.2, drive: 0,
@@ -152,6 +158,7 @@ const Synth = (() => {
     for (const s of PARAMS) {
       const v = p[s.k], d = BASE[s.k];
       if (s.type === 'choice') out[s.k] = s.options.some(o => o[0] === v) ? v : d;
+      else if (s.type === 'sample') out[s.k] = typeof v === 'string' && /^[\w-]{0,64}$/.test(v) ? v : d;
       else out[s.k] = typeof v === 'number' && isFinite(v) ? Math.min(s.max, Math.max(s.min, v)) : d;
     }
     return out;
@@ -189,12 +196,20 @@ const Synth = (() => {
     sawtooth: ph => 2 * (ph - Math.floor(ph + 0.5)),
   };
   // One sample of the steady tone at time t (seconds) for a note at f0 Hz: unison voices + layer, with the FM bell at full strength.
+  // Decoded sample data the pictures can read: id -> { data: Float32Array, sr }. The browser fills it (samples.js).
+  const SAMPLES = new Map();
+  const setSample = (id, d) => (d ? SAMPLES.set(id, d) : SAMPLES.delete(id));
+  const sampleAt = (p, ph, f0) => {   // ph = time in seconds of the note; the file plays at f0 / (its own note)
+    const s = SAMPLES.get(p.sample); if (!s || !s.data.length) return WAVE_FN.triangle(ph * f0);
+    const i = Math.floor(ph * s.sr * f0 / (440 * Math.pow(2, (p.sroot - 69) / 12)));
+    return s.data[p.sloop === 'on' ? i % s.data.length : Math.min(i, s.data.length - 1)] || 0;
+  };
   function toneAt(p, t, f0) {
     const n = p.voices, idx = p.fm * 6 / (2 * Math.PI);
     let v = 0;
     for (let k = 0; k < n; k++) {
       const f = f0 * Math.pow(2, (n > 1 ? (k / (n - 1) * 2 - 1) * p.detune : 0) / 1200);
-      v += WAVE_FN[p.wave](f * t + idx * Math.sin(2 * Math.PI * f0 * p.ratio * t));
+      v += p.wave === 'sample' ? sampleAt(p, t * f / f0, f0) : WAVE_FN[p.wave](f * t + idx * Math.sin(2 * Math.PI * f0 * p.ratio * t));
     }
     v /= Math.sqrt(n);
     if (p.osc2 > 0) v += p.osc2 * WAVE_FN[p.wave2](f0 * Math.pow(2, p.semi2 / 12) * t);
@@ -205,7 +220,8 @@ const Synth = (() => {
   // `cycles` periods of the tone, normalised to -1..1.
   function waveShape(p, points = 240, cycles = 2) {
     const f0 = 100, out = [];
-    for (let i = 0; i < points; i++) out.push(toneAt(p, (i / points) * cycles / f0, f0));
+    const T = p.wave === 'sample' ? 0.03 : cycles / f0;   // a sample has no single cycle: show its first 30 ms
+    for (let i = 0; i < points; i++) out.push(toneAt(p, (i / points) * T, f0));
     const m = Math.max(1e-9, ...out.map(Math.abs));
     return out.map(v => v / m);
   }
@@ -235,12 +251,12 @@ const Synth = (() => {
   const brightWord = c => (c < 600 ? 'Dark' : c < 2500 ? 'Warm' : c < 7000 ? 'Bright' : 'Very bright');
   function describe(p) {
     const wn = Object.fromEntries(WAVES)[p.wave], w2 = Object.fromEntries(WAVES)[p.wave2];
-    const tone = `${wn}${p.voices > 1 ? ` × ${p.voices} voices` : ''}${p.osc2 > 0.02 ? ` + ${w2} ${INTERVAL[p.semi2] || p.semi2 + ' st'}` : ''}${p.fm > 0.02 ? ' + bell shimmer' : ''}${p.sub > 0.02 ? ' + sub' : ''}${p.noise > 0.02 ? ' + air' : ''}${p.chorus > 0.05 ? ' · chorus' : ''}${p.mono === 'mono' ? ' · mono' + (p.glide > 0.005 ? ' glide' : '') : ''}`;
+    const tone = `${p.wave === 'sample' ? (SAMPLES.has(p.sample) ? 'Sample' : 'Sample (none loaded)') : wn}${p.voices > 1 ? ` × ${p.voices} voices` : ''}${p.osc2 > 0.02 ? ` + ${w2} ${INTERVAL[p.semi2] || p.semi2 + ' st'}` : ''}${p.fm > 0.02 && p.wave !== 'sample' ? ' + bell shimmer' : ''}${p.sub > 0.02 ? ' + sub' : ''}${p.noise > 0.02 ? ' + air' : ''}${p.chorus > 0.05 ? ' · chorus' : ''}${p.mono === 'mono' ? ' · mono' + (p.glide > 0.005 ? ' glide' : '') : ''}`;
     const shape = p.att > 0.1 ? 'Swell: fades in slowly' : p.sus < 0.1 ? 'Pluck: hits, then fades away' : p.sus > 0.75 ? 'Holds steady while the note is on' : 'Hits, then settles to a lower level';
     const move = p.lfo === 'off' || p.lfoDepth < 0.01 ? '' : ` · ${{ pitch: 'Vibrato', filter: 'Filter wobble', amp: 'Tremolo' }[p.lfo]} at ${p.lfoRate.toFixed(1)} Hz`;
     return { tone, bright: `${brightWord(p.cut)}${p.res > 6 ? ', with a resonant peak' : ''}${p.drive > 0.15 ? ', driven' : ''}${p.env > 0.3 ? ', opens on each hit' : ''}`, shape: shape + move };
   }
 
-  return { WAVES, FILTERS, LFO_TARGETS, MODES, GROUPS, PARAMS, BASE, PRESETS, CATS, PARTS, part, partView, catsFor, MACROS, byId, normalize, toSlider, fromSlider, same, applyMacro, toneAt, waveShape, spectrum, envAt, describe };
+  return { WAVES, WAVE2, LOOP, FILTERS, LFO_TARGETS, MODES, GROUPS, PARAMS, BASE, PRESETS, CATS, PARTS, part, partView, catsFor, MACROS, byId, normalize, toSlider, fromSlider, same, applyMacro, setSample, toneAt, waveShape, spectrum, envAt, describe };
 })();
 if (typeof module !== 'undefined') module.exports = Synth; // lets node --test require it; browsers ignore this

@@ -15,7 +15,8 @@ const PART_KEY = 'sidechain-synth-part';
 let part = 'lead'; try { part = Synth.part(localStorage.getItem(PART_KEY)).id; } catch (e) {}
 const view = () => Synth.partView(M, part), cur = () => view().synth;
 M.key = M.key ?? 0; M.scale = SCALES[M.scale] ? M.scale : 'major';
-function persist() { const s = readSong(); Synth.PARTS.forEach(({ keys }) => keys.forEach(k => { s[k] = M[k]; })); try { localStorage.setItem(SONG, JSON.stringify(s)); } catch (e) {} }
+function loadSamples() { if (ctx && typeof Samples !== 'undefined') Synth.PARTS.forEach(({ keys: [k] }) => { if (M[k].wave === 'sample') Samples.load(ctx, M[k].sample); }); }
+function persist() { loadSamples(); const s = readSong(); Synth.PARTS.forEach(({ keys }) => keys.forEach(k => { s[k] = M[k]; })); try { localStorage.setItem(SONG, JSON.stringify(s)); } catch (e) {} }
 
 /* audio: lead bus -> light reverb + delay from the song's settings -> out */
 let ctx, leadOut, leadAn, lastHz = 440;
@@ -31,7 +32,7 @@ function ensureAudio() {
     const dl = ctx.createDelay(2), fb = ctx.createGain(), send = ctx.createGain(); dl.delayTime.value = 60 / (M.bpm || 120) * 0.75; fb.gain.value = 0.35; send.gain.value = M.echo ?? 0.2;
     leadOut.connect(send).connect(dl); dl.connect(fb).connect(dl); dl.connect(comp);
   }
-  ctx.resume(); return ctx.currentTime + 0.01;
+  loadSamples(); ctx.resume(); return ctx.currentTime + 0.01;
 }
 const noteMidi = n => n + 12 * cur().oct;
 function play(n, v = 1) { const t = ensureAudio(), f = mtof(noteMidi(n)); lastHz = f; return startLead(ctx, leadOut, cur(), t, f, v); }

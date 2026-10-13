@@ -8,6 +8,7 @@ test('every param has a group, a default and a sane range', () => {
     assert.ok(groups.has(s.g), s.k);
     assert.ok(s.k in Synth.BASE, s.k);
     if (s.type === 'choice') assert.ok(s.options.some(o => o[0] === Synth.BASE[s.k]), s.k);
+    else if (s.type === 'sample') assert.equal(Synth.BASE[s.k], '', s.k);
     else {
       assert.ok(s.min < s.max, s.k);
       assert.ok(Synth.BASE[s.k] >= s.min && Synth.BASE[s.k] <= s.max, `${s.k} default in range`);
@@ -73,4 +74,16 @@ test('bass and chords parts: views, menus and presets', () => {
   assert.equal(Synth.catsFor('lead').length, Synth.CATS.length);
   for (const c of ['bass', 'chords']) assert.ok(Synth.PRESETS.filter(p => p.cat === c).length >= 8, c);
   for (const p of Synth.PRESETS.filter(p => p.cat === 'bass')) assert.equal(p.p.width, 0, p.id + ' keeps the low end centred');
+});
+
+test('samples: ids are sanitised and the pictures read registered data', () => {
+  assert.equal(Synth.normalize({ sample: '<script>' }).sample, '');
+  assert.equal(Synth.normalize({ sample: 'sabc123', wave: 'sample' }).sample, 'sabc123');
+  const p = Synth.normalize({ wave: 'sample', sample: 'stest', sroot: 69, sloop: 'on' });
+  Synth.setSample('stest', { data: Float32Array.from({ length: 100 }, (_, i) => i / 100), sr: 44100 });
+  assert.equal(Synth.toneAt(p, 50 / 44100, 440), 0.5, 'at its own note the file plays at normal speed');
+  assert.equal(Synth.toneAt(p, 25 / 44100, 880), 0.5, 'an octave up plays twice as fast');
+  assert.ok(/^Sample/.test(Synth.describe(p).tone));
+  Synth.setSample('stest', null);
+  assert.ok(/none loaded/.test(Synth.describe(p).tone));
 });
