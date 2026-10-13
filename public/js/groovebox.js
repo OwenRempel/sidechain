@@ -99,7 +99,7 @@ function chordName(r){const rs=semis(r),t=semis(r+2)-rs,f=semis(r+4)-rs;return N
 function roman(r){const rs=semis(r),t=semis(r+2)-rs,f=semis(r+4)-rs,n=['I','II','III','IV','V','VI','VII'][((r%7)+7)%7];return t===3?n.toLowerCase()+(f===6?'°':''):n}
 
 /* ---------- audio engine ---------- */
-let ctx,masterGain,masterFilter,duck,drumBus,musicBus,leadOut,padOut,revIn,delIn,delay,analyser,noiseBuf,ohatG=null;
+let leadAn,ctx,masterGain,masterFilter,duck,drumBus,musicBus,leadOut,padOut,revIn,delIn,delay,analyser,noiseBuf,ohatG=null;
 function initAudio(){
   ctx=new (window.AudioContext||window.webkitAudioContext)();
   masterGain=ctx.createGain();masterGain.gain.value=S.vol;
@@ -119,6 +119,7 @@ function initAudio(){
   const fb=ctx.createGain();fb.gain.value=.38;const dlp=ctx.createBiquadFilter();dlp.frequency.value=2800;
   delIn.connect(delay);delay.connect(dlp);dlp.connect(fb).connect(delay);dlp.connect(duck);
   leadOut=ctx.createGain();leadOut.connect(musicBus);leadOut.connect(delIn);leadOut.connect(revIn);
+  leadAn=ctx.createAnalyser();leadAn.fftSize=2048;leadOut.connect(leadAn); // feeds the synth panel's live wave
   padOut=ctx.createGain();padOut.gain.value=.7;padOut.connect(musicBus);padOut.connect(revIn);
   noiseBuf=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate);const nd=noiseBuf.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=R()*2-1;
 }
@@ -163,8 +164,9 @@ function bass(t,f,dur,v,w){
   g.connect(musicBus);
 }
 // Lead voice built from S.synth (see synth.js): unison osc + layer osc, FM bell, filter + envelope, amp ADSR, LFO.
+let lastLeadF=440;
 function lead(t,f,dur,v){
-  const p=S.synth,att=Math.max(.002,p.att),relAt=t+Math.max(dur,att),end=relAt+p.rel*5+.05,n=p.voices;
+  lastLeadF=f;const p=S.synth,att=Math.max(.002,p.att),relAt=t+Math.max(dur,att),end=relAt+p.rel*5+.05,n=p.voices;
   const mix=ctx.createGain(),flt=ctx.createBiquadFilter(),amp=ctx.createGain(),out=ctx.createGain(),oscs=[];
   flt.type=p.ftype;flt.Q.value=p.res;mix.gain.value=1/(Math.sqrt(n)*(1+p.osc2*.7));
   const osc=(wave,freq,det,lvl)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type=wave;g.gain.value=lvl;
@@ -336,17 +338,71 @@ function renderSynthHead(){
     `<optgroup label="Presets">${Synth.PRESETS.map(x=>`<option value="${x.id}"${x.id===S.synthId?' selected':''}>${esc(x.name)}</option>`).join('')}</optgroup>`+
     (u.length?`<optgroup label="My sounds">${u.map(n=>`<option value="u:${esc(n)}"${'u:'+n===S.synthId?' selected':''}>${esc(n)}</option>`).join('')}</optgroup>`:'');
   $('#synDel').hidden=!(S.synthId||'').startsWith('u:');
+  drawViz();
   $('#synWho').textContent=src?`${src.who}${Synth.same(src.p,S.synth)?'':' · edited'}`:'Your own tweaks. Save to keep them.';
 }
 function ctlHTML(s){const v=S.synth[s.k];
   if(s.type==='choice')return`<div class="seg" role="group" aria-label="${s.label}"><span class="lbl">${s.label}</span>${s.options.map(([val,l])=>`<button data-k="${s.k}" data-v="${val}" aria-pressed="${val===v}">${l}</button>`).join('')}</div>`;
   return`<label class="mac" for="sy-${s.k}"><header><span class="lbl">${s.label}</span><output id="syo-${s.k}">${s.fmt(v)}</output></header>
     <input type="range" id="sy-${s.k}" data-k="${s.k}" min="${s.log?0:s.min}" max="${s.log?1:s.max}" step="${s.log?.001:s.step}" value="${Synth.toSlider(s,v)}"></label>`}
+const MODE_KEY='sidechain-synth-mode';let synMode='simple';try{synMode=localStorage.getItem(MODE_KEY)||'simple'}catch(e){}
+function macroHTML(m){const x=m.get(S.synth);return`<label class="mac" for="sm-${m.k}"><header><span class="lbl">${m.label}</span><output id="smo-${m.k}">${Math.round(x*100)}%</output></header>
+  <input type="range" id="sm-${m.k}" data-m="${m.k}" min="0" max="1" step="0.01" value="${x}"><small>${m.tip}</small></label>`}
 function renderSynth(){
   renderSynthHead();
+  $('#synMode').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===synMode));
+  $('#synSimple').hidden=synMode!=='simple';$('#synGroups').hidden=synMode==='simple';
+  $('#synSimple').innerHTML=Synth.MACROS.map(macroHTML).join('')+ctlHTML(Synth.PARAMS.find(s=>s.k==='oct'));
   $('#synGroups').innerHTML=Synth.GROUPS.map(g=>`<fieldset class="sgrp"><legend>${g.name}</legend><p class="tip">${g.tip}</p>
     <div class="ctl">${Synth.PARAMS.filter(s=>s.g===g.id).map(ctlHTML).join('')}</div></fieldset>`).join('');
 }
+
+/* synth pictures: one cycle of the wave, overtones vs. the filter, and the shape of a note over time */
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+let fltCtx;try{fltCtx=new OfflineAudioContext(1,1,44100)}catch(e){}
+function fitCanvas(cv){const d=devicePixelRatio||1,w=cv.clientWidth*d,h=cv.clientHeight*d;if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}const c=cv.getContext('2d');c.clearRect(0,0,w,h);return[c,w,h,d]}
+function drawWave(live){
+  const[c,w,h,d]=fitCanvas($('#vzWave'));c.fillStyle=css('--panel2');c.fillRect(0,0,w,h);
+  c.strokeStyle=css('--line');c.lineWidth=d;c.beginPath();c.moveTo(0,h/2);c.lineTo(w,h/2);c.stroke();
+  let pts=Synth.waveShape(S.synth,240,2);
+  if(live){const a=new Float32Array(leadAn.fftSize);leadAn.getFloatTimeDomainData(a);let z=1;while(z<a.length/2&&!(a[z-1]<0&&a[z]>=0))z++;
+    const win=Math.min(a.length-z,Math.round(ctx.sampleRate/lastLeadF*2)),seg=a.slice(z,z+win),m=Math.max(1e-4,...seg.map(Math.abs));pts=Array.from(seg).map(v=>v/m)}
+  c.strokeStyle=css('--lead');c.lineWidth=(1.5+Math.min(S.synth.voices,7)*.35)*d;c.lineJoin='round';c.beginPath();
+  pts.forEach((v,i)=>{const x=i/(pts.length-1)*w,y=h/2-v*h*.4;i?c.lineTo(x,y):c.moveTo(x,y)});c.stroke();
+  $('#vcWave').textContent=Synth.describe(S.synth).tone+(live?' · live':'');
+}
+function drawSpec(){
+  const[c,w,h,d]=fitCanvas($('#vzSpec')),p=S.synth,f0=mtof(leadNote(S.prog[0])),lo=50,hi=16000,N=120;
+  c.fillStyle=css('--panel2');c.fillRect(0,0,w,h);
+  const sp=Synth.spectrum(p,f0,N,lo,hi),fr=new Float32Array(sp.map(o=>o.f)),mag=new Float32Array(N),ph=new Float32Array(N);
+  if(fltCtx){const b=fltCtx.createBiquadFilter();b.type=p.ftype;b.frequency.value=p.cut;b.Q.value=p.res;b.getFrequencyResponse(fr,mag,ph)}else mag.fill(1);
+  const db=v=>Math.max(0,1+20*Math.log10(Math.max(v,1e-5))/48),bw=w/N;   // 0 dB at top, -48 dB at the bottom
+  sp.forEach((o,i)=>{const raw=db(o.mag),kept=db(o.mag*mag[i]);
+    c.fillStyle=css('--line');c.fillRect(i*bw,h-raw*h,Math.max(1,bw-d),raw*h);
+    c.fillStyle=css('--lead');c.fillRect(i*bw,h-kept*h,Math.max(1,bw-d),kept*h)});
+  c.strokeStyle=css('--ink');c.lineWidth=1.5*d;c.beginPath();
+  Array.from(mag).forEach((m,i)=>{const x=(i+.5)*bw,y=Math.max(2*d,h*.15+(1-db(m))*h*.85);i?c.lineTo(x,y):c.moveTo(x,y)});c.stroke();
+  $('#vcSpec').textContent=`${Synth.describe(p).bright}. Grey = overtones in the tone, pink = what gets through the filter (white line).`;
+}
+function drawEnv(){
+  const[c,w,h,d]=fitCanvas($('#vzEnv')),p=S.synth,hold=Math.max(.5,p.att+.25),T=Math.min(4,hold+Math.max(.35,p.rel*1.3)),N=200,pad=10*d;
+  c.fillStyle=css('--panel2');c.fillRect(0,0,w,h);
+  const X=t=>t/T*w,Y=v=>h-pad/2-v*(h-pad*1.4),lfo=t=>p.lfo==='off'?0:p.lfoDepth*Math.sin(2*Math.PI*p.lfoRate*t);
+  c.strokeStyle=css('--line');c.setLineDash([3*d,3*d]);c.lineWidth=d;c.beginPath();c.moveTo(X(hold),0);c.lineTo(X(hold),h);c.stroke();c.setLineDash([]);
+  c.fillStyle=css('--dim');c.font=`${10*d}px ${css('--mono')}`;c.fillText('let go',X(hold)+3*d,11*d);
+  const pts=[];for(let i=0;i<=N;i++){const t=i/N*T,e=Synth.envAt(p,t,hold);let a=e.amp,ct=e.cut;
+    if(p.lfo==='amp')a*=1-p.lfoDepth/2+lfo(t)/2;if(p.lfo==='filter')ct*=1+lfo(t)*.9;pts.push([t,a,Math.log(Math.max(100,ct)/100)/Math.log(180)])}
+  c.fillStyle=css('--lead')+'55';c.strokeStyle=css('--lead');c.lineWidth=2*d;c.beginPath();c.moveTo(0,Y(0));pts.forEach(([t,a])=>c.lineTo(X(t),Y(a)));c.lineTo(w,Y(0));c.fill();
+  c.beginPath();pts.forEach(([t,a],i)=>i?c.lineTo(X(t),Y(a)):c.moveTo(X(t),Y(a)));c.stroke();
+  c.strokeStyle=css('--ink');c.lineWidth=1.2*d;c.setLineDash([4*d,3*d]);c.beginPath();pts.forEach(([t,,b],i)=>i?c.lineTo(X(t),Y(b)):c.moveTo(X(t),Y(b)));c.stroke();c.setLineDash([]);
+  if(p.lfo==='pitch'&&p.lfoDepth>.01){c.strokeStyle=css('--dim');c.lineWidth=d;c.beginPath();for(let i=0;i<=N;i++){const t=i/N*T,y=6*d+lfo(t)*4*d;i?c.lineTo(X(t),y):c.moveTo(X(t),y)}c.stroke()}
+  $('#vcEnv').textContent=`${Synth.describe(p).shape}. Pink = volume, dashed = brightness, over ${T.toFixed(1)} s.`;
+}
+let vizLive=false;
+function drawViz(){if(!$('#synth'))return;drawWave(false);drawSpec();drawEnv()}
+// Called every frame from draw(): swaps the wave picture to the real lead output while it sounds.
+function tickViz(){if(!leadAn)return;const a=new Float32Array(256);leadAn.getFloatTimeDomainData(a);const on=a.some(v=>Math.abs(v)>.003);
+  if(on)drawWave(true);else if(vizLive)drawWave(false);vizLive=on}
 function ensureAudio(){if(!ctx)initAudio();ctx.resume();return ctx.currentTime+.03}
 function audition(){if(playing)return;const t=ensureAudio();lead(t,mtof(leadNote(S.prog[0])),.32,1)}
 // Try: a short phrase over the first chord, so you hear the sound in context.
@@ -358,6 +414,11 @@ $('#synTry').onclick=tryPhrase;
 $('#synSave').onclick=()=>{const cur=synthSource(),name=(prompt('Name this sound',cur&&S.synthId.startsWith('u:')?cur.name:(cur?cur.name+' (mine)':'My lead'))||'').trim().slice(0,40);if(!name)return;
   const u=userPresets();u[name]={...S.synth};setUserPresets(u);S.synthId='u:'+name;renderSynthHead();save()};
 $('#synDel').onclick=()=>{const id=S.synthId||'';if(!id.startsWith('u:')||!confirm(`Delete "${id.slice(2)}"?`))return;const u=userPresets();delete u[id.slice(2)];setUserPresets(u);S.synthId='';renderSynthHead();save()};
+$('#synMode').onclick=e=>{const b=e.target.closest('button');if(!b)return;synMode=b.dataset.m;try{localStorage.setItem(MODE_KEY,synMode)}catch(e){}renderSynth()};
+$('#synSimple').oninput=e=>{const m=e.target.dataset.m,k=e.target.dataset.k;
+  if(m){S.synth=Synth.applyMacro(S.synth,m,+e.target.value);$('#smo-'+m).textContent=Math.round(e.target.value*100)+'%';renderSynthHead();save()}
+  else if(k){const s=Synth.PARAMS.find(p=>p.k===k),v=Synth.fromSlider(s,+e.target.value);setSynth(k,v);$('#syo-'+k).textContent=s.fmt(v)}};
+$('#synSimple').onchange=e=>{if(e.target.type==='range')audition()};
 $('#synGroups').oninput=e=>{const k=e.target.dataset.k,s=k&&Synth.PARAMS.find(p=>p.k===k);if(!s||s.type==='choice')return;
   const v=Synth.fromSlider(s,+e.target.value);setSynth(k,v);$('#syo-'+k).textContent=s.fmt(v)};
 $('#synGroups').onchange=e=>{if(e.target.type==='range')audition()};
@@ -414,7 +475,7 @@ $('#grid').onclick=e=>{
 /* ---------- playhead + scope ---------- */
 const cv=$('#scope'),cx=cv.getContext('2d');let wave;
 function draw(){
-  requestAnimationFrame(draw);
+  requestAnimationFrame(draw);tickViz();
   if(playing&&ctx){let cur=null;while(q.length&&q[0].t<=ctx.currentTime)cur=q.shift();
     if(cur){setPH(cur.st);if(cur.st===0||lastBar!==cur.bar){lastBar=cur.bar;$('#barN').textContent=cur.bar+1;$('#secN').textContent=cur.sec||'Loop';showChord(cur.bar%S.prog.length)}}}
   const dpr=devicePixelRatio||1,w=cv.clientWidth*dpr,h=cv.clientHeight*dpr;if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}

@@ -38,3 +38,24 @@ test('log sliders round-trip', () => {
   assert.equal(Synth.fromSlider(cut, 1), cut.max);
   assert.ok(Math.abs(Synth.fromSlider(cut, Synth.toSlider(cut, 2000)) - 2000) < 10);
 });
+
+test('simple knobs round-trip and keep params in range', () => {
+  for (const m of Synth.MACROS) for (const x of [0, 0.5, 1]) {
+    const p = Synth.applyMacro(Synth.BASE, m.k, x);
+    assert.ok(Synth.same(p, Synth.normalize(p)), `${m.k} ${x} in range`);
+    assert.ok(Math.abs(m.get(p) - x) < 0.2, `${m.k} ${x} reads back`);
+  }
+  assert.equal(Synth.applyMacro(Synth.BASE, 'motion', 0).lfo, 'off');
+  assert.equal(Synth.applyMacro(Synth.BASE, 'motion', 0.5).lfo, 'pitch');
+});
+
+test('pictures follow the sound', () => {
+  const sine = Synth.normalize({ wave: 'sine', osc2: 0 });
+  const peak = Synth.spectrum(sine, 440).reduce((a, b) => (b.mag > a.mag ? b : a));
+  assert.ok(Math.abs(peak.f - 440) < 30, `sine peaks at its pitch (${peak.f})`);
+  assert.equal(Synth.waveShape(sine).length, 240);
+  assert.ok(Math.max(...Synth.waveShape(sine).map(Math.abs)) <= 1);
+  const pluck = Synth.applyMacro(Synth.BASE, 'shape', 0), env = t => Synth.envAt(pluck, t, 0.5).amp;
+  assert.ok(env(0.001) > 0.4 && env(0.4) < 0.05 && env(1.5) < 0.01, 'pluck hits and fades');
+  assert.match(Synth.describe(pluck).shape, /Pluck/);
+});

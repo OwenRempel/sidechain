@@ -90,6 +90,84 @@ const Synth = (() => {
   const fromSlider = (s, x) => (s.log ? +(s.min * Math.pow(s.max / s.min, x)).toPrecision(3) : x);
   const same = (a, b) => PARAMS.every(s => (typeof a[s.k] === 'number' ? Math.abs(a[s.k] - b[s.k]) < 1e-6 : a[s.k] === b[s.k]));
 
-  return { WAVES, FILTERS, LFO_TARGETS, GROUPS, PARAMS, BASE, PRESETS, byId, normalize, toSlider, fromSlider, same };
+
+  // ---- Simple view: four plain knobs (0..1) that each move several params at once ----
+  const spec = k => PARAMS.find(s => s.k === k);
+  const lerp = (a, b, x) => a + (b - a) * x, glerp = (a, b, x) => a * Math.pow(b / a, x);
+  // Shape runs pluck (0) -> hit then settle (0.5) -> slow swell (1).
+  const SHAPES = [{ att: 0.002, dec: 0.2, sus: 0, rel: 0.15 }, { att: 0.005, dec: 0.35, sus: 0.6, rel: 0.2 }, { att: 0.6, dec: 1, sus: 1, rel: 1.2 }];
+  const MACROS = [
+    { k: 'bright', label: 'Brightness', tip: 'Dark and muffled → bright and cutting',
+      get: p => toSlider(spec('cut'), p.cut), set: (p, x) => ({ cut: fromSlider(spec('cut'), x) }) },
+    { k: 'width', label: 'Thickness', tip: 'One thin voice → a wide stack of slightly detuned voices',
+      get: p => (p.voices - 1) / 6, set: (p, x) => ({ voices: 1 + Math.round(x * 6), detune: Math.round(x * 35) }) },
+    { k: 'shape', label: 'Pluck ↔ Swell', tip: 'Short plucks → notes that hold → slow fade-ins',
+      get: p => (p.att > 0.02 ? 0.5 + 0.5 * Math.min(1, Math.log(p.att / 0.005) / Math.log(0.6 / 0.005)) : Math.min(0.5, p.sus * 0.5 / 0.6)),
+      set: (p, x) => { const [a, b] = x < 0.5 ? [SHAPES[0], SHAPES[1]] : [SHAPES[1], SHAPES[2]], y = x < 0.5 ? x * 2 : x * 2 - 1;
+        return { att: +glerp(a.att, b.att, y).toPrecision(3), dec: +glerp(a.dec, b.dec, y).toPrecision(3), sus: +lerp(a.sus, b.sus, y).toFixed(2), rel: +glerp(a.rel, b.rel, y).toPrecision(3) }; } },
+    { k: 'motion', label: 'Movement', tip: 'Still → wobbling (vibrato, or whatever Movement targets)',
+      get: p => (p.lfo === 'off' ? 0 : p.lfoDepth), set: (p, x) => ({ lfo: x < 0.01 ? 'off' : p.lfo === 'off' ? 'pitch' : p.lfo, lfoDepth: +x.toFixed(2) }) },
+  ];
+  const applyMacro = (p, k, x) => normalize({ ...p, ...MACROS.find(m => m.k === k).set(p, x) });
+
+  // ---- Pictures: the same maths the lead voice uses, sampled for drawing ----
+  const WAVE_FN = {
+    sine: ph => Math.sin(2 * Math.PI * ph),
+    triangle: ph => { const x = ph - Math.floor(ph); return x < 0.25 ? 4 * x : x < 0.75 ? 2 - 4 * x : 4 * x - 4; },
+    square: ph => (ph - Math.floor(ph) < 0.5 ? 1 : -1),
+    sawtooth: ph => 2 * (ph - Math.floor(ph + 0.5)),
+  };
+  // One sample of the steady tone at time t (seconds) for a note at f0 Hz: unison voices + layer, with the FM bell at full strength.
+  function toneAt(p, t, f0) {
+    const n = p.voices, idx = p.fm * 6 / (2 * Math.PI);
+    let v = 0;
+    for (let k = 0; k < n; k++) {
+      const f = f0 * Math.pow(2, (n > 1 ? (k / (n - 1) * 2 - 1) * p.detune : 0) / 1200);
+      v += WAVE_FN[p.wave](f * t + idx * Math.sin(2 * Math.PI * f0 * p.ratio * t));
+    }
+    v /= Math.sqrt(n);
+    if (p.osc2 > 0) v += p.osc2 * WAVE_FN[p.wave2](f0 * Math.pow(2, p.semi2 / 12) * t);
+    return v;
+  }
+  // `cycles` periods of the tone, normalised to -1..1.
+  function waveShape(p, points = 240, cycles = 2) {
+    const f0 = 100, out = [];
+    for (let i = 0; i < points; i++) out.push(toneAt(p, (i / points) * cycles / f0, f0));
+    const m = Math.max(1e-9, ...out.map(Math.abs));
+    return out.map(v => v / m);
+  }
+  // Loudness (0..1) of each overtone band, log-spaced from `lo` to `hi` Hz, for a note at f0. Goertzel per band.
+  function spectrum(p, f0 = 440, bands = 120, lo = 50, hi = 16000, sr = 44100, len = 2048) {
+    const x = new Float32Array(len);
+    for (let i = 0; i < len; i++) x[i] = toneAt(p, i / sr, f0) * (0.5 - 0.5 * Math.cos(2 * Math.PI * i / (len - 1)));
+    const out = [];
+    for (let b = 0; b < bands; b++) {
+      const f = lo * Math.pow(hi / lo, b / (bands - 1)), w = 2 * Math.PI * f / sr, c = 2 * Math.cos(w);
+      let s1 = 0, s2 = 0;
+      for (let i = 0; i < len; i++) { const s0 = x[i] + c * s1 - s2; s2 = s1; s1 = s0; }
+      out.push({ f, mag: Math.sqrt(Math.max(0, s1 * s1 + s2 * s2 - c * s1 * s2)) });
+    }
+    const m = Math.max(1e-9, ...out.map(o => o.mag));
+    return out.map(o => ({ f: o.f, mag: o.mag / m }));
+  }
+  // Volume and filter brightness over time for a note held `hold` seconds, mirroring lead() in groovebox.js.
+  function envAt(p, t, hold) {
+    const att = Math.max(0.002, p.att), relAt = Math.max(hold, att);
+    const preRel = tt => (tt < att ? tt / att : p.sus + (1 - p.sus) * Math.exp(-(tt - att) / (p.dec / 3)));
+    const amp = t < relAt ? preRel(t) : preRel(relAt) * Math.exp(-(t - relAt) / (p.rel / 4));
+    const top = Math.min(18000, p.cut * (1 + p.env * 8)), cut = p.cut + (top - p.cut) * Math.exp(-Math.max(0, t - 0.003) / (p.fdec / 3));
+    return { amp, cut };
+  }
+  // Plain-words summaries shown under each picture.
+  const brightWord = c => (c < 600 ? 'Dark' : c < 2500 ? 'Warm' : c < 7000 ? 'Bright' : 'Very bright');
+  function describe(p) {
+    const wn = Object.fromEntries(WAVES)[p.wave], w2 = Object.fromEntries(WAVES)[p.wave2];
+    const tone = `${wn}${p.voices > 1 ? ` × ${p.voices} voices` : ''}${p.osc2 > 0.02 ? ` + ${w2} ${INTERVAL[p.semi2] || p.semi2 + ' st'}` : ''}${p.fm > 0.02 ? ' + bell shimmer' : ''}`;
+    const shape = p.att > 0.1 ? 'Swell: fades in slowly' : p.sus < 0.1 ? 'Pluck: hits, then fades away' : p.sus > 0.75 ? 'Holds steady while the note is on' : 'Hits, then settles to a lower level';
+    const move = p.lfo === 'off' || p.lfoDepth < 0.01 ? '' : ` · ${{ pitch: 'Vibrato', filter: 'Filter wobble', amp: 'Tremolo' }[p.lfo]} at ${p.lfoRate.toFixed(1)} Hz`;
+    return { tone, bright: `${brightWord(p.cut)}${p.res > 6 ? ', with a resonant peak' : ''}${p.env > 0.3 ? ', opens on each hit' : ''}`, shape: shape + move };
+  }
+
+  return { WAVES, FILTERS, LFO_TARGETS, GROUPS, PARAMS, BASE, PRESETS, MACROS, byId, normalize, toSlider, fromSlider, same, applyMacro, toneAt, waveShape, spectrum, envAt, describe };
 })();
 if (typeof module !== 'undefined') module.exports = Synth; // lets node --test require it; browsers ignore this
