@@ -10,6 +10,9 @@ EDM groovebox + theory lab. Learn what connects and why, then make it.
 - **Groovebox:** pick a style (try Future Bass), hit New track, edit the grid, export MIDI into any DAW.
 - **Theory Lab:** pick a key, hear each chord's job, explore the circle, send a progression to the Groovebox. The Rhythm tab breaks down genre beats.
 
+## Online
+Pushes to `main` deploy `public/` to GitHub Pages: https://owenrempel.github.io/sidechain/ (the AI arranger needs the Node server, so it only works locally).
+
 ## Develop
 - `npm run check` syntax-checks every JS file.
 - `npm test` runs the test suite (no install needed, zero dependencies).
