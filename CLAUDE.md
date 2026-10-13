@@ -9,7 +9,10 @@ An EDM groovebox and theory lab, built toward an AI-assisted song builder. The o
 ```
 node server.js          # http://localhost:5173 (Node 18+, zero dependencies)
 npm run check           # syntax-check all JS
+npm test                # node:test suite in test/ (theory helpers + server smoke tests)
 ```
+Run `npm run check && npm test` before committing; CI runs both on Node 18 and 22.
+Cloud sessions run `.claude/hooks/session-start.sh`, which checks the Node version and syntax (and runs `npm ci` if a lockfile ever appears).
 Copy `.env.example` to `.env` and add `ANTHROPIC_API_KEY` to enable `/api/arrange`.
 
 ## Structure
@@ -24,6 +27,7 @@ public/js/groovebox.js sequencer, Web Audio synth engine, style generators (mono
 public/js/midi.js      Standard MIDI File export (type 1, drums ch10)
 public/js/theory.js    pure theory data and helpers (no DOM/audio, unit-testable)
 public/js/lab.js       Theory Lab UI and preview audio
+test/                  node:test suites; theory.js exports via module.exports when loaded in Node
 ```
 
 Plain ES scripts, no build step. Keep it that way until a feature needs a bundler. If you add one, use Vite.
